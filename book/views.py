@@ -104,6 +104,7 @@ def bookComment(request, *args, **kwargs):
 	"""
 		User can create, update and delete comments for a particular book.
 	"""
+	# TODO: if requests can be categorised in request.method then remove kwargs['action'] from url.
 	if not request.user.is_authenticated:
 		response = {
 			"action": False,
@@ -119,6 +120,17 @@ def bookComment(request, *args, **kwargs):
 		return JsonResponse(response, status=400)
 
 	book = Book.objects.get(isbn13=kwargs['isbn_13'])
+
+	if request.is_ajax() and request.method.lower() == "delete":
+		body = QueryDict(request.body)
+		commentId = body.get("commentId")
+		BookReview.objects.filter(id=commentId).delete()
+
+		response = {
+			"action": True,
+		}
+		return JsonResponse(response, status=200)
+
 
 	if request.is_ajax() and request.method == "POST":
 		if kwargs['action'] == 'create':

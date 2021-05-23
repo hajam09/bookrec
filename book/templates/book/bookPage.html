@@ -230,7 +230,7 @@
 				editDeleteComponent = `
 				<a href="#" onclick="edit_forum_comment_text_area(`+newComments[i].pk+`);"><i class='far fa-edit' style='font-size:15px'></i> Edit</a>
 				&nbsp;
-				<a href="#" onclick="delete_forum_comment(`+newComments[i].pk+`);return false;"><i class='far fa-trash-alt' style='font-size:15px'></i> Delete</a>`;
+				<a href="#" onclick="deleteBookComment(`+newComments[i].pk+`);return false;"><i class='far fa-trash-alt' style='font-size:15px'></i> Delete</a>`;
 			}
 
 			var commentComponent = `
@@ -407,7 +407,37 @@
 				}
 			}
 		});
+	}
 
+	function deleteBookComment( commentId )
+	{
+		if(!confirm('Are you sure you want to delete it?')){
+			return;
+		}
+		url = "{% url 'book:bookComment' 'isbn' 'action' %}";
+		url = url.replace('isbn', '{{book.isbn13}}');
+		url = url.replace('action', 'delete');
+
+		const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+		$.ajax({
+			url: url,
+			type: 'DELETE',
+			headers: {
+				'X-CSRFToken': csrftoken
+			},
+			data: {
+				'commentId': commentId,
+			},
+			async: true,
+			success: function (response)
+			{
+				if (response.action)
+				{
+					location.reload();
+				}
+			}
+		});
 	}
 
 	var swiper = new Swiper('.swiper-container', {
