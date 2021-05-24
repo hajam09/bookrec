@@ -172,7 +172,7 @@ def bookComment(request, *args, **kwargs):
 
 def recentlyAddedBooks():
 	allBooks = Book.objects.all()
-	top20Books = allBooks[len(allBooks)-20:] if allBooks.count()>20 else allBooks[:]
+	top20Books = allBooks[len(allBooks)-20:] if len(allBooks)>20 else allBooks[:]
 	
 	recentlyAddedBooks = [
 		{
@@ -185,10 +185,11 @@ def recentlyAddedBooks():
 	return recentlyAddedBooks
 
 def booksBasedOnRatings():
-	if Book.objects.count() == 0:
+	allBooks = Book.objects.all().prefetch_related('isFavourite')
+
+	if len(allBooks) == 0:
 		return []
 
-	allBooks = Book.objects.all().prefetch_related('isFavourite')
 	dictBooks = {}
 	for i in allBooks:
 
@@ -233,10 +234,11 @@ def similarBooks(book):
 	"""
 		Make recommendations based on the books’s description.
 	"""
-	if Book.objects.count() == 0 or not isinstance(book, Book):
+	allBooks = Book.objects.all().prefetch_related('isFavourite')
+
+	if len(allBooks) == 0 or not isinstance(book, Book):
 		return []
 
-	allBooks = Book.objects.all().prefetch_related('isFavourite')
 	dictBooks = {}
 
 	for i in allBooks:
