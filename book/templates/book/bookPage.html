@@ -195,7 +195,7 @@
 	function collectBookReviews()
 	{
 		newComments = [];
-		{% for r in book.bookReviews.all %}
+		{% for r in bookReviews %}
 
 		newComments.push({
 			'pk': '{{r.id}}',
@@ -255,10 +255,10 @@
 						</p>
 					</div>
 					<footer>
-						<span id="comment_like_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="like_comment(`+newComments[i].pk+`)">
+						<span id="comment_like_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="likeComment(`+newComments[i].pk+`)">
 							<i class='far fa-thumbs-up' style='font-size:15px'></i> (`+newComments[i].like_count+`)
 						</span>
-						<span id="comment_dislike_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="dislike_comment(`+newComments[i].pk+`)">
+						<span id="comment_dislike_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="dislikeComment(`+newComments[i].pk+`)">
 							<i class='far fa-thumbs-down' style='font-size:15px'></i> (`+newComments[i].dislike_count+`)
 						</span>
 						&nbsp;

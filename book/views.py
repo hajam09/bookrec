@@ -52,7 +52,8 @@ def bookPage(request, isbn_13):
 	context = {
 		"book": book,
 		"shelf": shelf,
-		"similarBooks": similarBooks(book)
+		"similarBooks": similarBooks(book),
+		"bookReviews": BookReview.objects.filter(book=book).prefetch_related('likes', 'dislikes').select_related('creator')
 	}
 	return render(request, "book/bookPage.html", context)
 
