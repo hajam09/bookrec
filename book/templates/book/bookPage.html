@@ -255,10 +255,10 @@
 						</p>
 					</div>
 					<footer>
-						<span id="comment_like_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="likeComment(`+newComments[i].pk+`)">
+						<span id="span-id-comment-like-id-`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="likeComment(`+newComments[i].pk+`)">
 							<i class='far fa-thumbs-up' style='font-size:15px'></i> (`+newComments[i].like_count+`)
 						</span>
-						<span id="comment_dislike_id_`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="dislikeComment(`+newComments[i].pk+`)">
+						<span id="span-id-comment-dislike-id-`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="dislikeComment(`+newComments[i].pk+`)">
 							<i class='far fa-thumbs-down' style='font-size:15px'></i> (`+newComments[i].dislike_count+`)
 						</span>
 						&nbsp;
@@ -435,6 +435,66 @@
 				if (response.action)
 				{
 					location.reload();
+				}
+			}
+		});
+	}
+
+	function likeComment( commentId )
+	{
+		url = "{% url 'book:bookComment' 'isbn' 'action' %}";
+		url = url.replace('isbn', '{{book.isbn13}}');
+		url = url.replace('action', 'put');
+
+		const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+		$.ajax({
+			url: url,
+			type: 'PUT',
+			headers: {
+				'X-CSRFToken': csrftoken
+			},
+			data: {
+				'commentId': commentId,
+				'functionality': 'likeComment',
+			},
+			async: true,
+			success: function (response)
+			{
+				if (response.action)
+				{
+					$('#span-id-comment-like-id-'+commentId).html("<i class='far fa-thumbs-up' style='font-size:15px'></i> ("+response.likeCount+")");
+					$('#span-id-comment-dislike-id-'+commentId).html("<i class='far fa-thumbs-down' style='font-size:15px'></i> ("+response.dislikeCount+")");
+				}
+			}
+		});
+	}
+
+	function dislikeComment( commentId )
+	{
+		url = "{% url 'book:bookComment' 'isbn' 'action' %}";
+		url = url.replace('isbn', '{{book.isbn13}}');
+		url = url.replace('action', 'put');
+
+		const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+		$.ajax({
+			url: url,
+			type: 'PUT',
+			headers: {
+				'X-CSRFToken': csrftoken
+			},
+			data: {
+				'commentId': commentId,
+				'functionality': 'dislikeComment',
+			},
+			async: true,
+			success: function (response)
+			{
+				if (response.action)
+				{
+					$('#span-id-comment-like-id-'+commentId).html("<i class='far fa-thumbs-up' style='font-size:15px'></i> ("+response.likeCount+")");
+					$('#span-id-comment-dislike-id-'+commentId).html("<i class='far fa-thumbs-down' style='font-size:15px'></i> ("+response.dislikeCount+")");
 				}
 			}
 		});

@@ -57,6 +57,24 @@ class BookReview(models.Model):
 	likes = models.ManyToManyField(User, related_name='bookReviewLikes')
 	dislikes = models.ManyToManyField(User, related_name='bookReviewDislikes')
 
+	def likeBookReview(self, request):
+		if request.user not in self.likes.all():
+			self.likes.add(request.user)
+		else:
+			self.likes.remove(request.user)
+
+		if request.user in self.dislikes.all():
+			self.dislikes.remove(request.user)
+
+	def dislikeBookReview(self, request):
+		if request.user not in self.dislikes.all():
+			self.dislikes.add(request.user)
+		else:
+			self.dislikes.remove(request.user)
+
+		if request.user in self.likes.all():
+			self.likes.remove(request.user)
+
 	# class Meta:
 	# 	ordering = ('createTime', )
 

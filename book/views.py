@@ -132,6 +132,25 @@ def bookComment(request, *args, **kwargs):
 		}
 		return JsonResponse(response, status=200)
 
+	if request.is_ajax() and request.method == "PUT":
+		body = QueryDict(request.body)
+		commentId = body.get("commentId")
+		functionality = body.get("functionality")
+
+		bookReview = BookReview.objects.get(id=commentId)
+
+		if functionality == 'likeComment':
+			bookReview.likeBookReview(request)
+
+		if functionality == 'dislikeComment':
+			bookReview.dislikeBookReview(request)
+
+		response = {
+			"action": True,
+			"likeCount": bookReview.likes.count(),
+			"dislikeCount": bookReview.dislikes.count()
+		}
+		return JsonResponse(response, status=200)
 
 	if request.is_ajax() and request.method == "POST":
 		if kwargs['action'] == 'create':
