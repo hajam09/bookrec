@@ -2,6 +2,7 @@ from book.models import Book
 from book.models import BookReview
 from book.utils import googleBooksAPIRequests
 from django.http import JsonResponse
+from django.http import HttpResponse
 from django.http import QueryDict
 from django.shortcuts import render
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -9,6 +10,7 @@ from sklearn.metrics.pairwise import sigmoid_kernel
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 from django.contrib.humanize.templatetags.humanize import naturaltime
+import json
 
 def mainpage(request):
 	if request.method == "POST":
@@ -53,9 +55,53 @@ def bookPage(request, isbn_13):
 		"book": book,
 		"shelf": shelf,
 		"similarBooks": similarBooks(book),
-		"bookReviews": BookReview.objects.filter(book=book).prefetch_related('likes', 'dislikes').select_related('creator')
 	}
 	return render(request, "book/bookPage.html", context)
+
+def getBookReviews(request, *args, **kwargs):
+
+	bookReviews = BookReview.objects.filter(book__isbn13=kwargs['isbn_13']).prefetch_related('likes', 'dislikes').select_related('creator')
+
+	if kwargs['orderBy'] == 'NewestFirst':
+		bookReviews = bookReviews.order_by('-createdTime')
+		bookReviewsSplit = [bookReviews[i:i + 15] for i in range(0, len(bookReviews), 15)]
+
+	elif kwargs['orderBy'] == 'OldestFirst':
+		bookReviews = bookReviews.order_by('createdTime')
+		bookReviewsSplit = [bookReviews[i:i + 15] for i in range(0, len(bookReviews), 15)]
+
+	elif kwargs['orderBy'] == 'TopReview':
+		bookReviews = sortBookCommentsByLike( bookReviews )
+		bookReviewsSplit = [bookReviews[i:i + 15] for i in range(0, len(bookReviews), 15)]
+
+	try:
+		bookReviewsSplitList = bookReviewsSplit[int(kwargs['pagination'])]
+	except IndexError:
+		response = {
+			"error": "IndexError"
+		}
+		return HttpResponse(json.dumps(response), content_type="application/json")
+
+	newBookReviewsList = [
+		{
+			'pk': c.pk,
+			'fullName': c.creator.get_full_name(),
+			'edited': c.edited,
+			'description': c.description,
+			'likeCount': c.likes.count(),
+			'dislikeCount': c.dislikes.count(),
+			'canEdit': c.creator.pk == request.user.pk,
+			'createdTime': 'c.createdTime',
+			'elapsed': naturaltime(c.createdTime)
+		}
+
+		for c in bookReviewsSplitList
+	]
+
+	response = {
+		'newBookReviewsList': newBookReviewsList
+	}
+	return JsonResponse(response, status=200)
 
 def updateShelf(request, *args, **kwargs):
 	"""
@@ -188,7 +234,6 @@ def bookComment(request, *args, **kwargs):
 
 	return JsonResponse({}, status=200)
 
-
 def recentlyAddedBooks():
 	allBooks = Book.objects.all()
 	top20Books = allBooks[len(allBooks)-20:] if len(allBooks)>20 else allBooks[:]
@@ -317,3 +362,36 @@ def favouriteBooksFromSimilarUsers(request):
 	if not request.user.is_authenticated or not request.user.is_superuser:
 		return []
 	return []
+
+def sortBookCommentsByLike(bookReviews):
+	"""
+		Return the existing book review list by most popular comment made by a user.
+		Attributes to determine the popularity:
+			likes and dislikes
+	"""
+
+	if len(bookReviews) == 0:
+		return []
+
+	bookReviewsDict = [
+		{
+			'id': b.pk,
+			'likeCount': b.likes.count(),
+			'dislikeCount': b.dislikes.count(),
+		}
+		for b in bookReviews
+	]
+
+	df = pd.DataFrame(bookReviewsDict)
+	scaling = MinMaxScaler()
+	divedent = 100/2
+
+	bookReviewsScaled = scaling.fit_transform(df[['likeCount', 'dislikeCount']])
+	bookReivewNormalized = pd.DataFrame(bookReviewsScaled, columns=['likeCount', 'dislikeCount'])
+
+	df[['normalizedlikeCount','normalizeddislikeCount']]= bookReivewNormalized
+	df['score'] = df['normalizedlikeCount'] * divedent+ df['normalizeddislikeCount'] * divedent
+
+	bookReviewDf = df.sort_values(['score'], ascending=False)
+	bookReviewId = list(bookReviewDf['id'])
+	return [j for i in bookReviewId for j in bookReviews if i == j.pk]

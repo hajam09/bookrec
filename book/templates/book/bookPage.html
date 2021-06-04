@@ -166,7 +166,18 @@
 							</div>
 
 							<hr/>
-							<p style="font-weight:bold;font-size: 20px">All rating and reviews</p>
+							<div class="row">
+								<div class="col">
+									<p style="font-weight:bold;font-size: 20px">All rating and reviews</p>
+								</div>
+								<div class="col">
+									<select id="bookReivewDropDownList" class="pull-right" style="width: auto;" onchange="newDropdownListSelected();">
+										<option value="NewestFirst">Newest first</option>
+										<option value="OldestFirst">Oldest first</option>
+										<option value="TopReview">Top review</option>
+									</select>
+								</div>
+							</div>
 							<div id="id-book-comment-container"></div>
 						</div>
 					</div>
@@ -189,8 +200,56 @@
 		shelfButtonsComponent( haveReadBtn, "Have Read", "id_have_read_btn", "haveRead", "div_haveRead_container");
 
 		starRatingComponent(0);
-		collectBookReviews();
+		// collectBookReviews();
 	});
+
+	var PAGINATION = -1;
+
+	function newDropdownListSelected()
+	{
+		$('#id-book-comment-container').empty();
+		PAGINATION = -1;
+		getNewBookReviews();
+	}
+
+	function getNewBookReviews()
+	{
+		if (PAGINATION == null)
+			return;
+
+		PAGINATION = PAGINATION + 1;
+
+		url = "{% url 'book:getBookReviews' 'isbn' 'orderBy' 'pagination' %}";
+		url = url.replace('isbn', '{{book.isbn13}}');
+		url = url.replace('orderBy', $( "#bookReivewDropDownList" ).val());
+		url = url.replace('pagination', PAGINATION);
+
+		$.ajax({
+			url: url,
+			dataType: 'json',
+			success: function (response)
+			{
+				if (response.error == 'IndexError')
+				{
+					PAGINATION = null;
+					return;
+				}
+
+				if (response.newBookReviewsList)
+				{
+					displayCollectedBookReviews(response.newBookReviewsList);					
+				}
+			}
+		});
+	}
+
+	window.onscroll = function(ev)
+	{
+		if ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight)
+		{
+			getNewBookReviews();
+		}
+	}
 
 	function collectBookReviews()
 	{
@@ -244,7 +303,7 @@
 						</div>
 						<div class="flex-grow-1 pl-2">
 							<a class="text-decoration-none" href="#">
-								<span class="text-capitalize mb-0">`+newComments[i].full_name+`</span>
+								<span class="text-capitalize mb-0">`+newComments[i].fullName+`</span>
 								<span class="small text-secondary m-0 mt-1" id="date_and_edited_msg_`+newComments[i].pk+`">`+newComments[i].elapsed+` {% if f.edited %}(edited){% endif %}</span>
 							</a>
 						</div>
@@ -256,10 +315,10 @@
 					</div>
 					<footer>
 						<span id="span-id-comment-like-id-`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="likeComment(`+newComments[i].pk+`)">
-							<i class='far fa-thumbs-up' style='font-size:15px'></i> (`+newComments[i].like_count+`)
+							<i class='far fa-thumbs-up' style='font-size:15px'></i> (`+newComments[i].likeCount+`)
 						</span>
 						<span id="span-id-comment-dislike-id-`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="dislikeComment(`+newComments[i].pk+`)">
-							<i class='far fa-thumbs-down' style='font-size:15px'></i> (`+newComments[i].dislike_count+`)
+							<i class='far fa-thumbs-down' style='font-size:15px'></i> (`+newComments[i].dislikeCount+`)
 						</span>
 						&nbsp;
 						`+editDeleteComponent+`
@@ -269,7 +328,7 @@
 			</div>
 			`;
 
-			$('#id-book-comment-container').prepend( commentComponent );
+			$('#id-book-comment-container').append( commentComponent );
 		}
 		return displayCollectedBookReviews(unIdentifiedComments);
 	}
