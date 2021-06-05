@@ -1,6 +1,7 @@
 from book.models import Book
 from book.models import BookReview
 from book.utils import googleBooksAPIRequests
+from django.contrib.auth.decorators import login_required
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -44,6 +45,16 @@ def bookPage(request, isbn_13):
 	except Book.DoesNotExist  as e:
 		raise e
 
+	if request.user.is_authenticated:
+		if 'visitedBooks' not in request.session:
+			request.session['visitedBooks'] = []
+
+		visitedBooks = request.session['visitedBooks']
+
+		if isbn_13 not in visitedBooks:
+			visitedBooks.append(isbn_13)
+		request.session['visitedBooks'] = visitedBooks
+
 	shelf = {
 		"inFavourites": True if request.user in book.isFavourite.all() else False,
 		"inReadingNow": True if request.user in book.readingNow.all() else False,
@@ -57,6 +68,27 @@ def bookPage(request, isbn_13):
 		"similarBooks": similarBooks(book),
 	}
 	return render(request, "book/bookPage.html", context)
+
+@login_required
+def bookShelf(request):
+
+	favouriteBooks = Book.objects.filter(isFavourite=request.user)
+	readingNowBooks = Book.objects.filter(readingNow=request.user)
+	toReadBooks = Book.objects.filter(toRead=request.user)
+	haveReadBooks = Book.objects.filter(haveRead=request.user)
+
+	if 'visitedBooks' not in request.session:
+		request.session['visitedBooks'] = []
+
+	context = {
+		"favouriteBooks": favouriteBooks,
+		"readingNowBooks": readingNowBooks,
+		"toReadBooks": toReadBooks,
+		"haveReadBooks": haveReadBooks,
+		"visitedBooks": [ Book.objects.get(isbn13=isbn) for isbn in request.session['visitedBooks'] ],
+		"personalizedBooks": []
+	}
+	return render(request, "book/bookShelf.html", context)	
 
 def getBookReviews(request, *args, **kwargs):
 
