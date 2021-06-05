@@ -1,16 +1,16 @@
 from book.models import Book
 from book.models import BookReview
 from book.utils import googleBooksAPIRequests
-from django.http import JsonResponse
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.http import QueryDict
 from django.shortcuts import render
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import sigmoid_kernel
 from sklearn.preprocessing import MinMaxScaler
-import pandas as pd
-from django.contrib.humanize.templatetags.humanize import naturaltime
 import json
+import pandas as pd
 
 def mainpage(request):
 	if request.method == "POST":

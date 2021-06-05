@@ -1,9 +1,11 @@
 from book.models import Book
 from book.models import Category
-import requests
+from django.utils.text import slugify
 import json
 import re
+import requests
 import unidecode
+import uuid
 
 def googleBooksAPIRequests(booksearch):
 	response = requests.get("https://www.googleapis.com/books/v1/volumes?q="+booksearch)
@@ -136,6 +138,11 @@ def googleBooksAPIRequests(booksearch):
 					"title": title,
 					"uid": uid,
 				}
+
+				slug = slugify(title)
+				while len(slug) < 50:
+					slug = slug + '-' + str(uuid.uuid4())
+				slug = slug[:50]
 
 				try:
 					requestedBooks.append(Book.objects.get(isbn13=isbn13))
