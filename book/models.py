@@ -44,6 +44,9 @@ class Book(models.Model):
 			self.haveRead.remove(request.user)
 			return False
 
+	def getaverageRatingToStar(self):
+		return self.unCleanData['averageRating']
+
 	# def __str__ (self):
 	# 	return self.isbn13
 

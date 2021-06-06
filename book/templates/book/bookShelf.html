@@ -96,7 +96,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 								<td>
 									<button type="button" class="btn btn-danger" onclick="updateShelf( '{{books.isbn13}}', 'favourites' );">
 										<i class="fa fa-trash-o" style="font-size:20px"></i>
@@ -126,7 +126,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 								<td>
 									<button type="button" class="btn btn-danger" onclick="updateShelf( '{{books.isbn13}}', 'readingNow' );">
 										<i class="fa fa-trash-o" style="font-size:20px"></i>
@@ -156,7 +156,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 								<td>
 									<button type="button" class="btn btn-danger" onclick="updateShelf( '{{books.isbn13}}', 'toRead' );">
 										<i class="fa fa-trash-o" style="font-size:20px"></i>
@@ -186,7 +186,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 								<td>
 									<button type="button" class="btn btn-danger" onclick="updateShelf( '{{books.isbn13}}', 'haveRead' );">
 										<i class="fa fa-trash-o" style="font-size:20px"></i>
@@ -215,7 +215,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 							</tr>
 
 							{% endfor %}
@@ -239,7 +239,7 @@
 									{{books.unCleanData.title}}
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStart}}</td>
+								<td>{{books.getaverageRatingToStar|safe}}</td>
 							</tr>
 
 							{% endfor %}

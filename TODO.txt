@@ -1,2 +1,4 @@
 - On book page, store the book isbn 13 on session to display it on the usershelf.
 - On book page, validate the book reviews.
+- On book page, add a star rating for book's average rating. (* * * * * rated by n users.).
+- For each star rating, fill the star using percentage.
