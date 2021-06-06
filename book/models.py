@@ -44,8 +44,8 @@ class Book(models.Model):
 			self.haveRead.remove(request.user)
 			return False
 
-	def getaverageRatingToStar(self):
-		return self.unCleanData['averageRating']
+	def getaverageRatingToPercentage(self):
+		return int(self.unCleanData['averageRating'] * 100 / 5)
 
 	# def __str__ (self):
 	# 	return self.isbn13

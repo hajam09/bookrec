@@ -243,6 +243,17 @@ def bookComment(request, *args, **kwargs):
 				rating = starCount,
 			)
 
+			newRatingsCount = book.cleanData['ratingsCount'] + 1
+			newRatingPointsSum = book.cleanData['ratingsCount']*book.cleanData['averageRating'] + starCount
+			newAverageRating = round(newRatingPointsSum/newRatingsCount, 1)
+
+			book.cleanData['ratingsCount'] = newRatingsCount
+			book.unCleanData['ratingsCount'] = newRatingsCount
+
+			book.cleanData['averageRating'] = newAverageRating
+			book.unCleanData['averageRating'] = newAverageRating
+			book.save()
+
 			response = {
 				"action": True,
 				"bookReview": {

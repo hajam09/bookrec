@@ -101,6 +101,8 @@
 									<dd class="col-sm-9">{{book.unCleanData.genre}}</dd>
 									<dt class="col-sm-3">Published Date</dt>
 									<dd class="col-sm-9">{{book.unCleanData.publishedDate}}</dd>
+									<dt class="col-sm-3">Rating</dt>
+									<dd class="col-sm-9">{{book.getaverageRatingToPercentage}}% ( rated by {{book.unCleanData.ratingsCount|intcomma}} users )</dd>
 								</dl>
 								<hr class="my-4">
 							</div>
