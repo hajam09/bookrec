@@ -212,10 +212,10 @@
 
 							<tr id="{{books.isbn13}}">
 								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
-									{{books.unCleanData.title}}
+									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
-								<td>{{books.getaverageRatingToStar|safe}}</td>
+								<td>{{books.getaverageRatingToStar}}</td>
 							</tr>
 
 							{% endfor %}

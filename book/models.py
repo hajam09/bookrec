@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime
 import jsonfield
+from django.utils.html import format_html
 
 class Book(models.Model):
 	isbn13 = models.CharField(max_length=32)
@@ -44,11 +45,20 @@ class Book(models.Model):
 			self.haveRead.remove(request.user)
 			return False
 
+	def getaverageRatingToStar(self):
+		i = 0
+		stars = ''
+		for _ in range(int(self.unCleanData['averageRating'])):
+			stars += '<i class="fas fa-star star-filled" style="font-size: 20px; color: blue;";></i>&nbsp;'
+			i += 1
+
+		for _ in range(i, 5, 1):
+			stars += '<i class="fas fa-star star-filled" style="font-size: 20px; color: #c7c7c7;";></i>&nbsp;'
+
+		return format_html( stars )
+
 	def getaverageRatingToPercentage(self):
 		return int(self.unCleanData['averageRating'] * 100 / 5)
-
-	# def __str__ (self):
-	# 	return self.isbn13
 
 class BookReview(models.Model):
 	book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='bookReviews')

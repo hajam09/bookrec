@@ -1,8 +1,10 @@
+from book.models import Book
+from book.models import BookReview
 from django.contrib.auth.models import User
 from faker import Faker
 import random
-from book.models import Book
-from book.models import BookReview
+import random
+import time
 
 # CONSTANT VALUES
 EMAIL_DOMAINS = ["@yahoo", "@gmail", "@outlook", "@hotmail"]
@@ -30,6 +32,9 @@ def createUser():
 
 def createBookReview():
 	print("start create book review")
+	startDateTime = "2010-01-01 12:00:00"
+	endDateTime = "2021-06-10 12:00:00"
+	timeFormat = '%Y-%m-%d %H:%M:%S'
 
 	ALL_USERS = User.objects.all().exclude(is_superuser=True)
 	fake = Faker('en_GB')
@@ -57,12 +62,18 @@ def createBookReview():
 			thisRating = random.choice(RATINGS)
 			sumOfThisRatings += thisRating
 
+			stime = time.mktime(time.strptime(startDateTime, timeFormat))
+			etime = time.mktime(time.strptime(endDateTime, timeFormat))
+			ptime = stime + random.random() * (etime - stime)
+			randomGeneratedDateTime = time.strftime(timeFormat, time.localtime(ptime))
+
 			newBookReviewList.append(
 				BookReview(
 					book = book,
 					creator = random.choice(ALL_USERS),
 					description = fake.text(),
 					rating = thisRating,
+					createdTime = randomGeneratedDateTime,
 				)
 			)
 
