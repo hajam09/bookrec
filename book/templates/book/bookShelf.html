@@ -91,9 +91,9 @@
 						<tbody id="favourite-result">
 							{% for books in favouriteBooks %}
 
-							<tr id="{{books.isbn13}}">
-								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
-									{{books.unCleanData.title}}
+							<tr id="{{books.isbn13}}" style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: auto;'>
+								<td scope='row'>
+									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
 								<td>{{books.getaverageRatingToStar|safe}}</td>
@@ -121,9 +121,9 @@
 						<tbody id="reading-now-result">
 							{% for books in readingNowBooks %}
 
-							<tr id="{{books.isbn13}}">
-								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
-									{{books.unCleanData.title}}
+							<tr id="{{books.isbn13}}" style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: auto;'>
+								<td scope='row'>
+									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
 								<td>{{books.getaverageRatingToStar|safe}}</td>
@@ -151,9 +151,9 @@
 						<tbody id="toread-result">
 							{% for books in toReadBooks %}
 
-							<tr id="{{books.isbn13}}">
-								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
-									{{books.unCleanData.title}}
+							<tr id="{{books.isbn13}}" style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: auto;'>
+								<td scope='row'>
+									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
 								<td>{{books.getaverageRatingToStar|safe}}</td>
@@ -181,9 +181,9 @@
 						<tbody id="have-read-result">
 							{% for books in haveReadBooks %}
 
-							<tr id="{{books.isbn13}}">
-								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
-									{{books.unCleanData.title}}
+							<tr id="{{books.isbn13}}" style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: auto;'>
+								<td scope='row'>
+									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
 								<td>{{books.getaverageRatingToStar|safe}}</td>
@@ -210,8 +210,8 @@
 						<tbody id="visited-result">
 							{% for books in visitedBooks %}
 
-							<tr id="{{books.isbn13}}">
-								<td scope='row' style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>
+							<tr id="{{books.isbn13}}" style='white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: auto;'>
+								<td scope='row'>
 									<a href="{% url 'book:bookPage' books.isbn13 %}">{{books.unCleanData.title|truncatechars:20}}</a>
 								</td>
 								<td>{{books.unCleanData.genre}}</td>
