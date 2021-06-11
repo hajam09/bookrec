@@ -126,3 +126,24 @@ class LoginForm(forms.ModelForm):
 			return
 
 		raise forms.ValidationError("Username or password did not match! ")
+
+class ProfileForm(forms.ModelForm):
+	profilePicture = forms.ImageField(
+						required = False
+					)
+
+	favouriteGenres = forms.ModelMultipleChoiceField(
+						label = '',
+						required = False,
+						queryset = None,
+						widget = forms.CheckboxSelectMultiple
+					)
+
+	class Meta:
+		model = Profile
+		fields = ('favouriteGenres', 'profilePicture')
+
+	def __init__(self, request=None, *args, **kwargs):
+		self.request = request
+		super().__init__(*args, **kwargs)
+		self.fields['favouriteGenres'].queryset = Category.objects.all()

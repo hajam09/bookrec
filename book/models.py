@@ -100,11 +100,11 @@ class BookReview(models.Model):
 
 		return format_html( stars )
 
-	# class Meta:
-	# 	ordering = ('createTime', )
-
 class Category(models.Model):
 	name = models.CharField(max_length=1000)
 
 	def __str__ (self):
 		return self.name
+
+	class Meta:
+		ordering = ('name',)

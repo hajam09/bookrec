@@ -1,4 +1,5 @@
 from accounts.forms import LoginForm
+from accounts.forms import ProfileForm
 from accounts.forms import RegistrationForm
 from django.contrib import messages
 from django.contrib.auth import authenticate
@@ -50,9 +51,22 @@ def logout(request):
 def register(request):
 	if request.method == "POST":
 		form = RegistrationForm(request.POST)
+		if form.is_valid():
+			form.save()
+			return redirect('accounts:login')
 	else:
 		form = RegistrationForm()
 	context = {
 		"form": form
 	}
 	return render(request, 'accounts/registration.html', context)
+
+def profile(request):
+	if request.method == "POST":
+		form = ProfileForm(request, request.POST)
+	else:
+		form = ProfileForm()
+	context = {
+		"form": form,
+	}
+	return render(request, 'accounts/profile.html', context)
