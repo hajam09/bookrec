@@ -124,7 +124,8 @@ def getBookReviews(request, *args, **kwargs):
 			'dislikeCount': c.dislikes.count(),
 			'canEdit': c.creator.pk == request.user.pk,
 			'createdTime': 'c.createdTime',
-			'elapsed': naturaltime(c.createdTime)
+			'elapsed': naturaltime(c.createdTime),
+			'stars': c.getRatingToStar(),
 		}
 
 		for c in bookReviewsSplitList

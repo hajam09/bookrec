@@ -102,7 +102,7 @@
 									<dt class="col-sm-3">Published Date</dt>
 									<dd class="col-sm-9">{{book.unCleanData.publishedDate}}</dd>
 									<dt class="col-sm-3">Rating</dt>
-									<dd class="col-sm-9">{{book.getaverageRatingToPercentage}}% ( rated by {{book.unCleanData.ratingsCount|intcomma}} users )</dd>
+									<dd class="col-sm-9">{{book.getaverageRatingToStar|safe}} ( rated by {{book.unCleanData.ratingsCount|intcomma}} users )</dd>
 								</dl>
 								<hr class="my-4">
 							</div>
@@ -268,6 +268,7 @@
 			'can_edit': '{{r.creator.pk}}' == '{{user.pk}}',
 			'created_time': '{{r.createdTime}}',
 			'elapsed': '{{r.createdTime|naturaltime}}',
+			'star_rating': '{{r.getRatingToStar|safe}}',
 		});
 
 		{% endfor %}
@@ -314,6 +315,7 @@
 						<p class="my-2" id="forum_comment_text_`+newComments[i].pk+`">
 							`+newComments[i].description+`
 						</p>
+						`+newComments[i].stars+`
 					</div>
 					<footer>
 						<span id="span-id-comment-like-id-`+newComments[i].pk+`" type="button" class="btn btn-default btn-sm" onclick="likeComment(`+newComments[i].pk+`)">

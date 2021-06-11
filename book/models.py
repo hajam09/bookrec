@@ -88,6 +88,18 @@ class BookReview(models.Model):
 		if request.user in self.likes.all():
 			self.likes.remove(request.user)
 
+	def getRatingToStar(self):
+		i = 0
+		stars = ''
+		for _ in range(self.rating):
+			stars += '<i class="fas fa-star star-filled" style="font-size: 15px; color: orange;";></i>&nbsp;'
+			i += 1
+
+		for _ in range(i, 5, 1):
+			stars += '<i class="fas fa-star star-filled" style="font-size: 15px; color: #c7c7c7;";></i>&nbsp;'
+
+		return format_html( stars )
+
 	# class Meta:
 	# 	ordering = ('createTime', )
 
