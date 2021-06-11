@@ -1,3 +1,5 @@
+from accounts.models import Profile
+from book.models import Category
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -48,8 +50,8 @@ class RegistrationForm(UserCreationForm):
 					)
 				)
 	terms = forms.BooleanField(
-				label=' <p>I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a></small> ',
-				widget=forms.CheckboxInput()
+				label =' <p>I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a></small> ',
+				widget = forms.CheckboxInput()
 			)
 
 	class Meta:
@@ -73,11 +75,11 @@ class RegistrationForm(UserCreationForm):
 
 	def save(self):
 		return User.objects.create_user(
-			username=self.cleaned_data.get("email"),
-			email=self.cleaned_data.get("email"),
-			password=self.cleaned_data.get("password1"),
-			first_name=self.cleaned_data.get("first_name"),
-			last_name=self.cleaned_data.get("last_name")
+			username = self.cleaned_data.get("email"),
+			email = self.cleaned_data.get("email"),
+			password = self.cleaned_data.get("password1"),
+			first_name = self.cleaned_data.get("first_name"),
+			last_name = self.cleaned_data.get("last_name")
 		)
 
 class LoginForm(forms.ModelForm):
@@ -100,8 +102,8 @@ class LoginForm(forms.ModelForm):
 				)
 	remember_me = forms.BooleanField(
 					label = 'Remember Me',
-					required=False,
-					widget=forms.CheckboxInput()
+					required = False,
+					widget = forms.CheckboxInput()
 				)
 
 	class Meta:
@@ -117,7 +119,6 @@ class LoginForm(forms.ModelForm):
 		password = self.cleaned_data.get('password')
 
 		if not self.cleaned_data.get('remember_me',None):
-			print("NOT TICKED")
 			self.request.session.set_expiry(0)
 
 		user = authenticate(username=email, password=password)

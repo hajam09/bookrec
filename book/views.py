@@ -403,7 +403,11 @@ def similarBooks(book):
 	return [ dictBooks[isbn] for isbn in finalResult ]
 
 def favouriteBooksFromSimilarUsers(request):
-	if not request.user.is_authenticated or not request.user.is_superuser:
+	"""
+		Return list of other favourite books from similar user(s).
+		Attributes to determine the popularity: TBD
+	"""
+	if not request.user.is_authenticated or request.user.is_superuser:
 		return []
 	return []
 
