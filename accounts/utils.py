@@ -1,8 +1,8 @@
 from book.models import Book
 from book.models import BookReview
+from book.models import Category
 from django.contrib.auth.models import User
 from faker import Faker
-import random
 import random
 import time
 
@@ -93,3 +93,27 @@ def createBookReview():
 		BookReview.objects.bulk_create(newBookReviewList)
 
 	print("complete create book review")
+
+def createFavouriteGenresForUsers():
+	print("Adding favourite genres to user's profile.")
+	ALL_USERS = User.objects.all().exclude(is_superuser=True)
+	ALL_GENRES = list(Category.objects.all())
+
+	for u in ALL_USERS:
+		randomFavouriteGenres = random.choices(ALL_GENRES, k=random.randint(4,len(ALL_GENRES)))
+		u.profile.favouriteGenres.set(randomFavouriteGenres)
+
+def addBooksToShelf():
+	print("Adding books to user's shelf.")
+	ALL_USERS = User.objects.all().exclude(is_superuser=True)
+	ALL_BOOKS= list(Book.objects.all())
+
+	for u in ALL_USERS:
+		randomFavouriteBooks = random.choices(ALL_BOOKS, k=random.randint(10,len(ALL_BOOKS)))
+		randomReadingNowBooks = random.choices(ALL_BOOKS, k=random.randint(10,len(ALL_BOOKS)))
+		randomToReadBooks = random.choices(ALL_BOOKS, k=random.randint(10,len(ALL_BOOKS)))
+		randomHaveReadBooks = random.choices(ALL_BOOKS, k=random.randint(10,len(ALL_BOOKS)))
+		u.isFavourite.set(randomFavouriteBooks)
+		u.readingNow.set(randomReadingNowBooks)
+		u.toRead.set(randomToReadBooks)
+		u.haveRead.set(randomHaveReadBooks)

@@ -137,6 +137,7 @@ class ProfileForm(forms.ModelForm):
 						label = '',
 						required = False,
 						queryset = None,
+						initial = None,
 						widget = forms.CheckboxSelectMultiple
 					)
 
@@ -148,3 +149,8 @@ class ProfileForm(forms.ModelForm):
 		self.request = request
 		super().__init__(*args, **kwargs)
 		self.fields['favouriteGenres'].queryset = Category.objects.all()
+		self.fields['favouriteGenres'].initial = self.request.user.profile.favouriteGenres.all()
+
+	def save(self):
+		chosenGenres = self.cleaned_data.get('favouriteGenres')
+		self.request.user.profile.favouriteGenres.set(chosenGenres)

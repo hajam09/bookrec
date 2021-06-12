@@ -153,6 +153,36 @@
 
     {% endif %}
 
+    <div class="w-75 p-4"></div>
+
+    {% if favouriteBooksFromSimilarUsers %}
+        <p style="font-weight:bold;font-size: 20px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Favourite books from similar users'...</p>
+        <div class="swiper-container">
+            <div class="swiper-wrapper">
+                {% for books in favouriteBooksFromSimilarUsers %}
+                <div class="swiper-slide">
+                    <a style="cursor: pointer;" href="{% url 'book:bookPage' books.isbn13 %}">
+                        <p class="lead img-responsive">
+                            <img src="https://via.placeholder.com/200x300" alt="No Image" style="height: 200px;">
+                            <!-- {{books.thumbnail}} -->
+                        </p>
+                        <p align="center">{{books.title}}</p>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Add Pagination -->
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+
+            <!-- If we need scrollbar -->
+            <div class="swiper-scrollbar"></div>
+
+        </div>
+
+    {% endif %}
+
 </div>
 
 <script type="text/javascript">

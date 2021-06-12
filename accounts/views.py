@@ -37,7 +37,7 @@ def login(request):
 			cache.incr(uniqueVisitorId, 1)
 
 	else:
-		form = LoginForm()
+		form = LoginForm(request)
 	
 	context = {
 		"form": form
@@ -55,7 +55,7 @@ def register(request):
 			form.save()
 			return redirect('accounts:login')
 	else:
-		form = RegistrationForm()
+		form = RegistrationForm(request)
 	context = {
 		"form": form
 	}
@@ -64,8 +64,11 @@ def register(request):
 def profile(request):
 	if request.method == "POST":
 		form = ProfileForm(request, request.POST)
+		if form.is_valid():
+			form.save()
+			return redirect('accounts:profile')
 	else:
-		form = ProfileForm()
+		form = ProfileForm(request)
 	context = {
 		"form": form,
 	}
