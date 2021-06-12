@@ -1,7 +1,9 @@
-from book.models import Book
-from book.models import BookReview
-from book.utils import googleBooksAPIRequests
+import difflib
+import json
+
+import pandas as pd
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -10,8 +12,12 @@ from django.shortcuts import render
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import sigmoid_kernel
 from sklearn.preprocessing import MinMaxScaler
-import json
-import pandas as pd
+
+from accounts.models import Profile
+from book.models import Book
+from book.models import BookReview
+from book.utils import googleBooksAPIRequests
+
 
 def mainpage(request):
 	if request.method == "POST":
@@ -405,11 +411,46 @@ def similarBooks(book):
 def favouriteBooksFromSimilarUsers(request):
 	"""
 		Return list of other favourite books from similar user(s).
-		Attributes to determine the popularity: TBD
+		Attributes to determine the similarity: list of favourite books from each user.
 	"""
 	if not request.user.is_authenticated or request.user.is_superuser:
 		return []
-	return []
+
+	otherProfiles = Profile.objects.select_related('user').prefetch_related('favouriteGenres').all()
+	userGenreIds = [i.pk for i in request.user.profile.favouriteGenres.all()]
+	
+	if len(userGenreIds) == 0:
+		return
+
+	similarityScores = [
+		{
+			'userId': p.user.id,
+			'similarityScore': difflib.SequenceMatcher(None, userGenreIds, [i.pk for i in p.favouriteGenres.all()] ).ratio()
+		}
+		for p in otherProfiles if p.user != request.user
+	]
+
+	df = pd.DataFrame(similarityScores)
+	topFiveUsers = df.sort_values(by=['similarityScore'], ascending=False).head(5)
+	topFiveUserObjects = User.objects.filter(pk__in=list(topFiveUsers['userId']))
+
+	bookList = Book.objects.filter(isFavourite__in=topFiveUserObjects)
+	books = bookList[:20] if len(bookList) > 20 else bookList[:]
+
+	favouriteBooks = [
+		{
+			"isbn13": i.unCleanData["isbn13"],
+			"title": i.unCleanData['title'],
+			"thumbnail": i.unCleanData['thumbnail']
+		}
+		for i in books
+	]
+
+	return favouriteBooks
+
+def sortArray(A, reverse):
+	A.sort(reverse=reverse)
+	return A
 
 def sortBookCommentsByLike(bookReviews):
 	"""
