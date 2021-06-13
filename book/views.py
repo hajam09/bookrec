@@ -434,7 +434,7 @@ def favouriteBooksFromSimilarUsers(request):
 	topFiveUsers = df.sort_values(by=['similarityScore'], ascending=False).head(5)
 	topFiveUserObjects = User.objects.filter(pk__in=list(topFiveUsers['userId']))
 
-	bookList = Book.objects.filter(isFavourite__in=topFiveUserObjects)
+	bookList = Book.objects.filter(isFavourite__in=topFiveUserObjects).exclude(isFavourite=request.user)
 	books = bookList[:20] if len(bookList) > 20 else bookList[:]
 
 	favouriteBooks = [
@@ -447,10 +447,6 @@ def favouriteBooksFromSimilarUsers(request):
 	]
 
 	return favouriteBooks
-
-def sortArray(A, reverse):
-	A.sort(reverse=reverse)
-	return A
 
 def sortBookCommentsByLike(bookReviews):
 	"""
