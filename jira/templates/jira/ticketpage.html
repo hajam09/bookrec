@@ -1,0 +1,744 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block content %}
+<style type="text/css">
+	@media (min-width: 1200px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+	}
+
+	@media (min-width: 972px) and (max-width: 1200px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+	}
+
+	@media (min-width: 700px) and (max-width: 959px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+	}
+
+    /* The Modal (background) */
+    #myModal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        padding-top: 100px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgb(0, 0, 0);
+        background-color: rgba(0, 0, 0, 0.9);
+    }
+
+    /* Modal Content (image) */
+    .modal-content {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 700px;
+    }
+
+
+    /* Add Animation */
+    .modal-content {
+        -webkit-animation-name: zoom;
+        -webkit-animation-duration: 0.6s;
+        animation-name: zoom;
+        animation-duration: 0.6s;
+    }
+
+    @-webkit-keyframes zoom {
+        from {
+            -webkit-transform: scale(0)
+        }
+        to {
+            -webkit-transform: scale(1)
+        }
+    }
+
+    @keyframes zoom {
+        from {
+            transform: scale(0)
+        }
+        to {
+            transform: scale(1)
+        }
+    }
+
+    /* The Close Button */
+    .close {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* 100% Image Width on Smaller Screens */
+    @media only screen and (max-width: 700px) {
+        .modal-content {
+            width: 100%;
+        }
+    }
+</style>
+<div class="wrapper" style="margin: auto;overflow-x: hidden; color: black;">
+    <br>
+    <div class="row gutters-sm">
+    	<div class="col-md-12">
+    		<a href="{% url 'jira:ticketpage' ticket.url %}">{{ticket.project}} / {{ticket.url}}</a>
+    		<div class="col-xs-12" style="height:10px;"></div>
+    		<h3>{{ticket.summary}}</h3>
+            <a class="btn btn-secondary" href="{% url 'jira:editticket' ticket.url %}" role="button"><i class="far fa-edit"></i> Edit</a>
+    		<button type="button" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Share ticket link"><i class="fas fa-share-alt-square"></i></button>
+            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target=".bd-example-modal-lg">Create sub tasks</button>
+            <div>
+                <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLongTitle">Create Sub Task</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="text" name="create_sub_task" hidden>
+                                    <div class="form-group row">
+                                        <label for="project" class="col-sm-2 col-form-label"><b>Project</b></label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" name="project">
+                                                <option>OneTutor (OT)</option>
+                                                <option>Jira</option>
+                                                <option>Dashboard</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="issuetype" class="col-sm-2 col-form-label"><b>Issue Type</b></label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" name="issuetype">
+                                                <option>Bug</option>
+                                                <option>Improvement</option>
+                                                <option>Story</option>
+                                                <option>Task</option>
+                                                <option>Test</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="priority" class="col-sm-2 col-form-label"><b>Priority</b></label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" name="priority">
+                                                <option>Low</option>
+                                                <option>Medium</option>
+                                                <option>High</option>
+                                                <option>None</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <label for="reporter" class="col-sm-2 col-form-label"><b>Reporter</b></label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" name="reporter">
+                                                <!-- TODO: If more superusers, then selected will be this user. -->
+                                                {% for superuser in superusers %}
+                                                <option value="{{superuser.id}}">{{superuser}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="assignee" class="col-sm-2 col-form-label"><b>Assignee</b></label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" name="assignee">
+                                                {% for superuser in superusers %}
+                                                <option value="{{superuser.id}}">{{superuser}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <label for="summary" class="col-sm-2 col-form-label"><b>Summary</b></label>
+                                        <div class="col-sm-10">
+                                            <input type="text" class="form-control" id="summary" name="summary" placeholder="Add issue summary here" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="description" class="col-sm-2 col-form-label"><b>Description</b></label>
+                                        <div class="col-sm-10">
+                                            <textarea class="form-control" id="description" name="description" rows="5" placeholder="Add issue description here" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="points" class="col-sm-2 col-form-label"><b>Issue Points</b></label>
+                                        <div class="col-sm-10">
+                                            <input type="text" class="form-control" id="points" name="points" placeholder="Add issue points here" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-success">Create Issue</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+    	</div>
+    	<div style="height:130px;"></div>
+    	<div class="col-md-12">
+    		<div class="row">
+    			<div class="col-12 col-md-8">
+    				<a data-toggle="collapse" href="#details" role="button" aria-expanded="false" aria-controls="details"><i class="fas fa-chevron-circle-down"></i> Details</a>
+    				<div class="collapse" id="details">
+    					<div class="card card-body">
+    						<div class="row">
+    							<div class="col-sm">
+    								<div class="row">
+    									<div class="col-6">
+    										<p>Type:</p>
+    										<p>Priority:</p>
+                                            <p>Story Points:</p>
+                                            {% if epic_link %}<p>Epic Link: </p>{% endif %}
+    									</div>
+    									<div class="col-6">
+    										<p>
+    											{% if ticket.issue_type == "Bug" %}
+    											<img src='{% static "img/bug.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Bug">&nbsp;&nbsp;Bug
+    											{% elif ticket.issue_type == "Improvement" %}
+    											<img src='{% static "img/improvement.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Improvement">&nbsp;&nbsp;Improvement
+    											{% elif ticket.issue_type == "Story" %}
+    											<img src='{% static "img/story.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Story">&nbsp;&nbsp;Story
+    											{% elif ticket.issue_type == "Task" %}
+    											<img src='{% static "img/task.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Task">&nbsp;&nbsp;Task
+    											{% elif ticket.issue_type == "Test" %}
+    											<img src='{% static "img/test.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Test">&nbsp;&nbsp;Test
+    											{% elif ticket.issue_type == "Epic" %}
+    											<img src='{% static "img/epic.jpg" %}' width="20" height="20" data-toggle="tooltip" data-placement="top" title="Epic">&nbsp;&nbsp;Epic
+    											{% else %}
+    											<img src='' width="20" height="20">
+    											{% endif %}
+    										</p>
+    										<p>
+    											{% if ticket.priority == "Low" %}
+    											<span class="badge badge-success">{{ticket.priority}}</span>
+    											{% elif ticket.priority == "Medium" %}
+    											<span class="badge badge-warning">{{ticket.priority}}</span>
+    											{% elif ticket.priority == "High" %}
+							                	<span class="badge badge-danger">{{ticket.priority}}</span>
+							                	{% else %}
+							                	<span class="badge badge-secondary">{{ticket.priority}}</span>
+							                	{% endif %}
+    										</p>
+                                            <p>
+                                                {{ticket.points}}
+                                            </p>
+                                            <p>
+                                                {% if epic_link %}
+                                                <a href="{% url 'jira:ticketpage' epic_link.url %}">{{epic_link.url}} / {{epic_link.summary}}</a>
+                                                {% endif %}
+                                            </p>
+    									</div>
+    								</div>
+    							</div>
+    							<div class="col-sm">
+    								<div class="row">
+    									<div class="col-6">
+    										<p>Status:</p>
+                                            {% if ticket.status != 'None' %}
+                                            <p>Sprint:</p>
+                                            {% endif %}
+    										<p>Resolution:</p>
+    									</div>
+    									<div class="col-6">
+    										<p>
+    											{% if ticket.status == "Open" %}
+							                	<span class="badge badge-info">{{ticket.status}}</span>
+							                	{% elif ticket.status == "Progress" %}
+							                	<span class="badge badge-warning">{{ticket.status}}</span>
+							                	{% elif ticket.status == "Done" %}
+							                	<span class="badge badge-success">{{ticket.status}}</span>
+							                	{% elif ticket.status == "Cancelled" %}
+							                	<span class="badge badge-danger">{{ticket.status}}</span>
+							                	{% else %}
+							                	<span class="badge badge-secondary">{{ticket.status}}</span>
+							                	{% endif %}
+    										</p>
+                                            {% if ticket.sprint %}
+                                            <p>
+                                                <a href="{% url 'jira:sprintboard' ticket.sprint.url %}" style="text-transform: capitalize;">{{ticket.sprint.url}}</a>
+                                            </p>
+                                            {% endif %}
+    										<p>
+    											{% if ticket.status == "Done" %}
+    											Resolved
+    											{% else %}
+    											Unresolved
+    											{% endif %}
+    										</p>
+    									</div>
+    								</div>
+    							</div>
+    						</div>
+    					</div>
+    				</div>
+    				<div class="col-xs-12" style="height:30px;"></div>
+    				<a data-toggle="collapse" href="#description" role="button" aria-expanded="false" aria-controls="description"><i class="fas fa-chevron-circle-down"></i> Description</a>
+    				<div class="collapse" id="description">
+    					<div class="card card-body">
+    						{{ ticket.description|linebreaksbr }}
+    					</div>
+    				</div>
+                    {% if sub_tasks %}
+                    <div class="col-xs-12" style="height:30px;"></div>
+                    <a data-toggle="collapse" href="#sub_task" role="button" aria-expanded="false" aria-controls="sub_task"><i class="fas fa-chevron-circle-down"></i> Sub Tasks</a>
+                    <div class="collapse" id="sub_task">
+                        <div class="card card-body">
+                            {% for sub_task in sub_tasks %}
+                            <a href="{% url 'jira:ticketpage' sub_task.url %}">{{sub_task.url}} / {{sub_task.summary}}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+    				<div class="col-xs-12" style="height:30px;"></div>
+    				<a data-toggle="collapse" href="#attachments" role="button" aria-expanded="false" aria-controls="attachments"><i class="fas fa-chevron-circle-down"></i> Attachments</a>
+    				<div class="collapse" id="attachments">
+    					<div class="card card-body">
+    						<div class="timeline-body">
+                                {% for image in ticket_images %}
+                                <img src="{{image.image.url}}" alt="..." width="150", height="150" onclick="image_modal_popup('{{image.image.url}}');" data-toggle="modal" data-target=".bd-example-modal-lg">
+                                {% endfor %}
+                            </div>
+    					</div>
+                        <div id="myModal" class="modal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+                            <span class="close">&times;</span>
+                            <img class="modal-content" id="img01" style="max-width: 1500px;">
+                        </div>
+    				</div>
+    				<div class="col-xs-12" style="height:30px;"></div>
+    				<a data-toggle="collapse" href="#comments" role="button" aria-expanded="false" aria-controls="comments"><i class="fas fa-chevron-circle-down"></i> Comments</a>
+    				<div class="collapse" id="comments">
+    					<div class="card card-body">
+    						<div class="form-group">
+                                <textarea class="form-control" id="comment_box" placeholder="Write comment here..." rows="4"></textarea><br>
+                                <button type="button" class="btn btn-outline-primary pull-right" onclick="post_comment();">Submit</button>
+                            </div>
+                            <hr>
+                            <div id="ticket_comments_container">
+                                {% if ticket_comments %} {% for tik_com in ticket_comments %}
+                                <div class="ticket_comment_container_{{tik_com.id}}">
+                                    <div class="border p-4">
+                                        <!-- post header -->
+                                        <div class="row m-0">
+                                            <div class="">
+                                                <a class="text-decoration-none" href="#">
+                                                <img class="" src="https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png" width="50" height="50" alt="...">
+                                                </a>
+                                            </div>
+                                            <div class="flex-grow-1 pl-2">
+                                                <a class="text-decoration-none" href="#">
+                                                    <h2 class="text-capitalize h5 mb-0">{{ tik_com.creator.get_full_name }}</h2>
+                                                </a>
+                                                <p class="small text-secondary m-0 mt-1" id="date_and_edited_msg_{{tik_com.id}}">1 day ago {% if tik_com.edited %}(edited){% endif %}</p>
+                                            </div>
+                                            {% if tik_com.creator.pk == user.pk %}
+                                            <div class="dropdown">
+                                                <a class="" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fas fa-chevron-down"></i>
+                                                </a>
+                                                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                                    <a class="dropdown-item text-primary" href="#" onclick="edit_ticket_comment_text_area('{{tik_com.id}}');">Edit</a>
+                                                    <a class="dropdown-item text-primary" href="#" onclick="delete_ticket_comment('{{tik_com.id}}');">Delete</a>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <!-- post body -->
+                                        <div class="">
+                                            <p class="my-2" id="ticket_comment_text_{{tik_com.id}}">
+                                                {{ tik_com.comment|linebreaksbr }}
+                                            </p>
+                                        </div>
+                                        <hr class="my-3">
+                                        <!-- post footer begins -->
+                                        <footer>
+                                            <button id="ticket_comment_like_id_{{tik_com.id}}" type="button" class="btn btn-default btn-sm" onclick="like_comment('{{tik_com.id}}')">
+                                                <i class='far fa-thumbs-up' style='font-size:15px'></i> ({{tik_com.ticket_comment_likes.count}})
+                                            </button>
+                                            <button id="ticket_comment_dislike_id_{{tik_com.id}}" type="button" class="btn btn-default btn-sm" onclick="dislike_comment('{{tik_com.id}}')">
+                                                <i class='far fa-thumbs-down' style='font-size:15px'></i> ({{tik_com.ticket_comment_dislikes.count}})
+                                            </button>
+                                        </footer>
+                                    </div>
+                                    <br>
+                                </div>
+                                {% endfor %} {% endif %}
+                            </div>
+    					</div>
+    				</div>
+    			</div>
+    			<div class="col">
+    				<a data-toggle="collapse" href="#people" role="button" aria-expanded="false" aria-controls="people"><i class="fas fa-chevron-circle-down"></i> People</a>
+    				<div class="collapse" id="people">
+    					<div class="card card-body">
+    						<div class="row">
+								<div class="col-12">
+                                    <div class="row">
+                                        <div class="col-md-auto">Assignee:</div>
+                                        <div class="col-md-auto"><p>
+                                        {% if ticket.assignee.tutorprofile.profilePicture %}
+                                        <img height="24px" width="24px" src="{{ ticket.assignee.tutorprofile.profilePicture.url }}" class="rounded">&nbsp;&nbsp;
+                                        {% endif %}
+                                        {% if ticket.assignee.get_full_name %}
+                                        {{ticket.assignee.get_full_name}}
+                                        {% else %}
+                                        {{ticket.assignee}}
+                                        {% endif %}
+                                    </p></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-auto">Reporter:</div>
+                                        <div class="col-md-auto"><p>
+                                        {% if ticket.reporter.tutorprofile.profilePicture %}
+                                        <img height="24px" width="24px" src="{{ ticket.reporter.tutorprofile.profilePicture.url }}" class="rounded">&nbsp;&nbsp;
+                                        {% endif %}
+                                        {% if ticket.reporter.get_full_name %}
+                                        {{ticket.reporter.get_full_name}}
+                                        {% else %}
+                                        {{ticket.reporter}}
+                                        {% endif %}
+                                    </p></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-auto">Watchers:</div>
+                                        <div class="col-md-auto"><p id="ticket_watcher">{{ticket.watchers.count}}</p></div>
+                                    </div>
+								</div>
+							</div>
+    					</div>
+    				</div>
+    				<div class="col-xs-12" style="height:30px;"></div>
+    				<a data-toggle="collapse" href="#dates" role="button" aria-expanded="false" aria-controls="dates"><i class="fas fa-chevron-circle-down"></i> Dates</a>
+    				<div class="collapse" id="dates">
+    					<div class="card card-body">
+                            <div class="row">
+                                <div class="col col-md-auto">Created:</div>
+                                <div class="col col-md-auto">{{ticket.created_date}}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col col-md-auto">Updated:</div>
+                                <div class="col col-md-auto">{{ticket.modified_date}}</div>
+                            </div>
+    					</div>
+    				</div>
+    			</div>
+    		</div>
+    	</div>
+    </div>
+</div>
+<script type="text/javascript">
+	$('#details,#description,#attachments,#people,#dates,#comments,#sub_task').collapse({
+		toggle: true
+	})
+
+	function watchers(is_watching, watchers_count) {
+        if (is_watching) {
+
+            var ticket_watcher_text = `<span onclick="watch_unwatch_issue();" class="badge badge-pill badge-primary" data-toggle="tooltip" data-placement="top" title="You are watching this issue. Click to stop watching this issue.">`+watchers_count+`</span>`
+            $('p#ticket_watcher').html(ticket_watcher_text);
+
+        } else {
+
+            var ticket_watcher_text = `<span onclick="watch_unwatch_issue();" class="badge badge-pill badge-secondary" data-toggle="tooltip" data-placement="top" title="You are not watching this issue. Click to watch this issue.">`+watchers_count+`</span>`
+            $('p#ticket_watcher').html(ticket_watcher_text);
+
+        }
+    }
+	watchers(eval('{{is_watching}}'.toLowerCase()), eval('{{ticket.watchers.count}}'));
+
+	function watch_unwatch_issue() {
+        $.ajax({
+            data: {
+                'functionality': 'watch_unwatch_issue'
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.status_code == 200) {
+                    var watchers_count = response.new_watch_count_for_this_ticket;
+                    var is_watching = response.is_watching;
+                    watchers(is_watching, watchers_count);
+                }
+            }
+        });
+    }
+
+    function image_modal_popup(image_url) {
+        // Get the modal
+        var modal = document.getElementById("myModal");
+        modal.style.display = "block";
+        var modalImg = document.getElementById("img01");
+        modalImg.src = image_url;
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close")[0];
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+        // $("#carousel_current_image").attr("src",image_url);
+    }
+
+    function like_comment(commentId) {
+        $.ajax({
+            data: {
+                'commentId': commentId,
+                'functionality': 'like_ticket_comment'
+            },
+            dataType: 'json',
+            success: function (response) {
+                if(response.status_code == 200) {
+                    var this_ticket = eval(response.this_ticket)[0];
+                    var number_of_likes = this_ticket.fields.ticket_comment_likes.length;
+                    var number_of_dislikes = this_ticket.fields.ticket_comment_dislikes.length;
+                    console.log(this_ticket);
+
+                    $('#ticket_comment_like_id_'+commentId).html('<i class="far fa-thumbs-up" style="font-size:15px"></i> ('+ number_of_likes +')');
+                    $('#ticket_comment_dislike_id_'+commentId).html('<i class="far fa-thumbs-down" style="font-size:15px"></i> ('+ number_of_dislikes +')');
+
+                } else if (response.status_code == 401) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+
+                } else if (response.status_code == 404) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+                    $( ".ticket_comment_container_"+commentId ).remove();
+                }
+            }
+        });
+    }
+
+    function dislike_comment(commentId) {
+        $.ajax({
+            data: {
+                'commentId': commentId,
+                'functionality': 'dislike_ticket_comment'
+            },
+            dataType: 'json',
+            success: function (response) {
+                if(response.status_code == 200) {
+                    var this_ticket = eval(response.this_ticket)[0];
+                    var number_of_likes = this_ticket.fields.ticket_comment_likes.length;
+                    var number_of_dislikes = this_ticket.fields.ticket_comment_dislikes.length;
+
+                    $('#ticket_comment_like_id_'+commentId).html('<i class="far fa-thumbs-up" style="font-size:15px"></i> ('+ number_of_likes +')');
+                    $('#ticket_comment_dislike_id_'+commentId).html('<i class="far fa-thumbs-down" style="font-size:15px"></i> ('+ number_of_dislikes +')');
+
+                } else if (response.status_code == 401) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+
+                } else if (response.status_code == 404) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+                    $( ".ticket_comment_container_"+commentId ).remove();
+                }
+            }
+        });
+    }
+
+    function edit_ticket_comment_text_area(comment_id) {
+
+        var regex = /<br\s*[\/]?>/gi;
+
+        // converting the p tag where the comment is displayed into a text area so the user can edit their comment.
+        $('p#ticket_comment_text_'+comment_id).each(function() {
+            $(this).replaceWith( '<br id="update_comment_br_'+comment_id+'"><textarea class="form-control border p-4" id="edit_comment_box_'+comment_id+'" rows="3">' + $(this).html().replace(regex, "\n").trim() + '</textarea><div id="update_comment_btn_'+comment_id+'" class="pull-right"><br><button type="button" class="btn btn-outline-danger" onclick="cancel_ticket_comment_update('+comment_id+');">Cancel</button>&nbsp;&nbsp;<button type="button" class="btn btn-outline-info" onclick="update_ticket_comment('+comment_id+');">Update Comment</button><br><br></div>' );
+        });
+
+    }
+
+    function update_ticket_comment(comment_id) {
+        var comment = $("#edit_comment_box_"+comment_id).val();
+        comment = comment.trim();
+
+        if (comment && !comment.trim() || comment.length==0) {
+            alert("Enter a comment!");
+            return;
+        }
+
+        $.ajax({
+            data: {
+                'functionality': 'update_ticket_comment',
+                'comment_id': comment_id,
+                'comment_text': comment
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.status_code == 200) {
+                    var this_comment = eval(response.this_comment)[0];
+
+                    $('textarea#edit_comment_box_'+comment_id).each(function() {
+                        $(this).replaceWith( '<p class="my-2" id="ticket_comment_text_'+comment_id+'"> '+this_comment.fields.comment.replace(/\n\r?/g, '<br />')+' </p>' );
+                    });
+
+                    $('div#update_comment_btn_'+comment_id).remove();
+                    $('br#update_comment_br_'+comment_id).remove();
+                    $('p#date_and_edited_msg_'+comment_id).text($('p#date_and_edited_msg_'+comment_id).text()+" (edited)");
+
+                } else if (response.status_code == 404) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+                    $( ".ticket_comment_container_"+comment_id ).remove();
+                }
+            }
+        });
+
+    }
+
+    function cancel_ticket_comment_update(comment_id) {
+        $('textarea#edit_comment_box_'+comment_id).each(function() {
+            $(this).replaceWith( '<p class="my-2" id="ticket_comment_text_'+comment_id+'"> '+$(this).html().replace(/\n\r?/g, '<br />')+' </p>' );
+        });
+
+        $('div#update_comment_btn_'+comment_id).remove();
+        $('br#update_comment_br_'+comment_id).remove();
+    }
+
+    function delete_ticket_comment(comment_id) {
+        $.ajax({
+            data: {
+                'functionality': 'delete_ticket_comment',
+                'comment_id': comment_id
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.status_code == 200 || response.status_code == 404) {
+                    $( ".ticket_comment_container_"+comment_id ).remove();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: "Can't do that!",
+                        text: response.message
+                    });
+                }
+            }
+        });
+    }
+
+    function post_comment() {
+        var comment = $("#comment_box").val();
+        comment = comment.trim();
+
+        if (comment && !comment.trim() || comment.length==0) {
+            alert("Enter a comment!");
+            return;
+        }
+
+        $("#comment_box").val("");
+
+        $.ajax({
+            data: {
+                'functionality': 'post_comment_on_ticket',
+                'comment': comment
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.status_code == 200) {
+                    var new_ticket_comment = eval(response.new_ticket_comment)[0];
+                    var new_ticket_comment_text = `
+                        <div class="ticket_comment_container_`+new_ticket_comment.pk+`">
+                            <div class="border p-4">
+                                <!-- post header -->
+                                <div class="row m-0">
+                                    <div class="">
+                                        <a class="text-decoration-none" href="#">
+                                        <img class="" src="https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png" width="50" height="50" alt="...">
+                                        </a>
+                                    </div>
+                                    <div class="flex-grow-1 pl-2">
+                                        <a class="text-decoration-none" href="#">
+                                            <h2 class="text-capitalize h5 mb-0">{{request.user.get_full_name}}</h2>
+                                        </a>
+                                        <p class="small text-secondary m-0 mt-1" id="date_and_edited_msg_`+new_ticket_comment.pk+`">1 day ago {% if tik_com.edited %}(edited){% endif %}</p>
+                                    </div>
+                                    <div class="dropdown">
+                                        <a class="" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fas fa-chevron-down"></i>
+                                        </a>
+                                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                            <a class="dropdown-item text-primary" href="#" onclick="edit_ticket_comment_text_area('`+new_ticket_comment.pk+`');">Edit</a>
+                                            <a class="dropdown-item text-primary" href="#" onclick="delete_ticket_comment('`+new_ticket_comment.pk+`');">Delete</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- post body -->
+                                <div class="">
+                                    <p class="my-2" id="ticket_comment_text_`+new_ticket_comment.pk+`">
+                                        `+new_ticket_comment.fields.comment.replace(/\n\r?/g, '<br />')+`
+                                    </p>
+                                </div>
+                                <hr class="my-3">
+                                <!-- post footer begins -->
+                                <footer>
+                                    <button id="ticket_comment_like_id_`+new_ticket_comment.pk+`" type="button" class="btn btn-default btn-sm" onclick="like_comment('`+new_ticket_comment.pk+`')">
+                                        <i class='far fa-thumbs-up' style='font-size:15px'></i> (`+new_ticket_comment.fields.ticket_comment_likes.length+`)
+                                    </button>
+                                    <button id="ticket_comment_dislike_id_`+new_ticket_comment.pk+`" type="button" class="btn btn-default btn-sm" onclick="dislike_comment('`+new_ticket_comment.pk+`')">
+                                        <i class='far fa-thumbs-down' style='font-size:15px'></i> (`+new_ticket_comment.fields.ticket_comment_dislikes.length+`)
+                                    </button>
+                                </footer>
+                            </div>
+                            <br>
+                        </div>`;
+                    $('#ticket_comments_container').prepend( new_ticket_comment_text );
+                }
+            }
+        });
+    }
+
+</script>
+{% endblock %}

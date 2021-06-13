@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('book.urls')),
     path('accounts/', include('accounts.urls')),
+    path('jira/', include('jira.urls')),
 ]
 
 if settings.DEBUG:
