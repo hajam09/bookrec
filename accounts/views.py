@@ -55,7 +55,7 @@ def register(request):
 			form.save()
 			return redirect('accounts:login')
 	else:
-		form = RegistrationForm(request)
+		form = RegistrationForm()
 	context = {
 		"form": form
 	}
