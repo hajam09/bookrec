@@ -1,5 +1,6 @@
 {% extends "accounts/base.html" %}
 {% load static %}
+{% load crispy_forms_tags %}
 {% block content %}
 <style type="text/css">
 	@media (min-width: 1200px) {
@@ -71,80 +72,55 @@
 			                <div class="modal-body">
 								<form method="post">
 									{% csrf_token %}
-									<input type="text" name="create_ticket" hidden>
+									<input type="text" name="createTicket" hidden>
 								    <div class="form-group row">
-								        <label for="project" class="col-sm-2 col-form-label"><b>Project</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Project</b></label>
 								        <div class="col-sm-10">
-								            <select class="form-control" name="project">
-												<option>OneTutor (OT)</option>
-												<option>Jira</option>
-												<option>Dashboard</option>
-											</select>
+								            {{ form.project }}
 										</div>
 								    </div>
 								    <div class="form-group row">
-								        <label for="issuetype" class="col-sm-2 col-form-label"><b>Issue Type</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Issue Type</b></label>
 								        <div class="col-sm-10">
-								            <select class="form-control" name="issuetype">
-								            	<option>Bug</option>
-												<option>Improvement</option>
-												<option>Story</option>
-												<option>Task</option>
-												<option>Test</option>
-												<option>Epic</option>
-											</select>
+											{{ form.issue_type }}
 										</div>
 								    </div>
 								    <div class="form-group row">
-								        <label for="priority" class="col-sm-2 col-form-label"><b>Priority</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Priority</b></label>
 								        <div class="col-sm-10">
-								            <select class="form-control" name="priority">
-								            	<option>Low</option>
-												<option>Medium</option>
-												<option>High</option>
-												<option>None</option>
-											</select>
+								            {{ form.priority }}
 										</div>
 								    </div>
 								    <hr>
 								    <div class="form-group row">
-								        <label for="reporter" class="col-sm-2 col-form-label"><b>Reporter</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Reporter</b></label>
 								        <div class="col-sm-10">
-								            <select class="form-control" name="reporter">
-								            	<!-- TODO: If more superusers, then selected will be this user. -->
-								            	{% for superuser in superusers %}
-												<option value="{{superuser.id}}">{{superuser}}</option>
-								            	{% endfor %}
-											</select>
+								            {{ form.reporter }}
 										</div>
 								    </div>
 								    <div class="form-group row">
-								        <label for="assignee" class="col-sm-2 col-form-label"><b>Assignee</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Assignee</b></label>
 								        <div class="col-sm-10">
-								            <select class="form-control" name="assignee">
-								            	{% for superuser in superusers %}
-												<option value="{{superuser.id}}">{{superuser}}</option>
-								            	{% endfor %}
-											</select>
+								            {{ form.assignee }}
 										</div>
 								    </div>
 								    <hr>
 								    <div class="form-group row">
-								        <label for="summary" class="col-sm-2 col-form-label"><b>Summary</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Summary</b></label>
 								        <div class="col-sm-10">
-								            <input type="text" class="form-control" id="summary" name="summary" placeholder="Add issue summary here" required>
+								            {{ form.summary }}
 								        </div>
 								    </div>
 								    <div class="form-group row">
-								        <label for="description" class="col-sm-2 col-form-label"><b>Description</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Description</b></label>
 								        <div class="col-sm-10">
-								        	<textarea class="form-control" id="description" name="description" rows="5" placeholder="Add issue description here" required></textarea>
+								        	{{ form.description }}
 								        </div>
 								    </div>
 								    <div class="form-group row">
-								        <label for="points" class="col-sm-2 col-form-label"><b>Issue Points</b></label>
+								        <label class="col-sm-2 col-form-label"><b>Issue Points</b></label>
 								        <div class="col-sm-10">
-								        	<input type="text" class="form-control" id="points" name="points" placeholder="Add issue points here" required>
+								        	{{ form.points }}
 								        </div>
 								    </div>
 								    <div class="modal-footer">
