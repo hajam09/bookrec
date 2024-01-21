@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_filters %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block content %}
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css' rel='stylesheet'/>
+    <div class='container'>
+        <div class='w-100 p-5'></div>
+        <div class='row'>
+            <div class='col-12 d-flex justify-content-center align-items-center'>
+                <div class='card w-50'>
+                    <form method='post'>
+                        {% csrf_token %}
+                        <div class='card-body'>
+                            <h5 class='card-title text-center'>Register</h5>
+                            <hr>
+                            {{ form | crispy }}
+                            <input type='submit' class='btn btn-primary btn-block' value='Register now'>
+                            <br>
+                            <span>
+                                <p class='small text-center'>By clicking the Register Now button, you agree to our <br>
+                                <a href='#' target='_blank'>Terms &amp; Conditions</a>, and
+                                <a href='#' target='_blank'>Privacy Policy</a>
+                            </p>
+                            </span>
+                            <div class='small text-center'>Already have an account? <a
+                                    href='{% url 'core:login-view' %}'>Sign in</a></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        $(document).ready(function () {
+            $('.item-selector').select2({
+                placeholder: 'Favourite Genres',
+                allowClear: true,
+            });
+        });
+    </script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js'></script>
+{% endblock %}

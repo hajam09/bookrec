@@ -1,0 +1,367 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css' rel='stylesheet'/>
+
+    <div id='div-id-settings-container'></div>
+
+    <script type='text/babel'>
+
+        class MyProfileComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                this.props.updateAlert([]);
+
+                this.state = {
+                    firstName: null,
+                    lastName: null,
+                    email: null,
+                    favouriteGenres: [],
+                    allGenres: [],
+                }
+            }
+
+            handleSubmit = (event) => {
+                event.preventDefault();
+                const selectedGenres = Array.from(this.refs.refGenres.options)
+                    .filter(option => option.selected)
+                    .map(option => option.value);
+
+                if (selectedGenres.length < 3) {
+                    this.props.updateAlert([{'alert': 'warning', 'message': 'Select at least 3 different genres.'}]);
+                    return;
+                }
+
+                const payload = {
+                    firstName: this.refs.refFirstname.value.trim(),
+                    lastName: this.refs.refLastname.value.trim(),
+                    email: this.refs.refEmail.value.trim(),
+                    genres: selectedGenres,
+                }
+
+                fetch('{% url 'core:profileApiEventVersion1Component' %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify(payload)
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateAlert(response.data.alerts);
+                        }
+                    })
+            };
+
+            componentDidMount = () => {
+                fetch('{% url 'core:profileApiEventVersion1Component' %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                firstName: response.data.profile.firstName,
+                                lastName: response.data.profile.lastName,
+                                email: response.data.profile.email,
+                                favouriteGenres: response.data.profile.favouriteGenres,
+                            });
+                        }
+                    })
+
+                fetch('{% url 'core:categoryApiEventVersion1Component' %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        this.setState({
+                            allGenres: response,
+                        }, () => {
+                            $('#id-all-genres').select2({
+                                placeholder: 'Favourite Genres',
+                                allowClear: true,
+                            }).val(this.state.favouriteGenres).trigger('change');
+                        })
+                    })
+            }
+
+            render = () => {
+                return (
+                    <div className='col-12 d-flex justify-content-center align-items-center'>
+                        <div className='card w-75'>
+                            <form className='card-body' onSubmit={this.handleSubmit}>
+                                <div className='form-group'>
+                                    <input type='text' placeholder='Firstname' className='form-control' required={true}
+                                           defaultValue={this.state.firstName} ref='refFirstname'></input>
+                                </div>
+                                <div className='form-group'>
+                                    <input type='text' placeholder='Lastname' className='form-control' required={true}
+                                           defaultValue={this.state.lastName} ref='refLastname'></input>
+                                </div>
+                                <div className='form-group'>
+                                    <input type='email' placeholder='Email' className='form-control' required={true}
+                                           defaultValue={this.state.email} ref='refEmail'></input>
+                                </div>
+                                <div className='form-group'>
+                                    <select name='genres' className='form-control' id='id-all-genres' multiple={true}
+                                            required={true} ref='refGenres'>
+                                        {this.state.allGenres.map((item, i) => <option key={i}
+                                                                                       value={item.name}> {item.name} </option>)}
+                                    </select>
+                                </div>
+                                <button type='submit' className='btn btn-outline-primary btn-block'>Update</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class UpdatePasswordComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                this.props.updateAlert([]);
+            }
+
+            handleSubmit = (event) => {
+                event.preventDefault();
+
+                const payload = {
+                    currentPassword: this.refs.refCurrentPassword.value,
+                    newPassword: this.refs.refNewPassword.value,
+                    repeatNewPassword: this.refs.refRepeatNewPassword.value,
+                }
+
+                fetch('{% url 'core:userPasswordUpdateApiEventVersion1Component' %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify(payload)
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateAlert(response.data.alerts);
+                        }
+                    })
+            };
+
+            render = () => {
+                return (
+                    <div className='col-12 d-flex justify-content-center align-items-center'>
+                        <div className='card w-75'>
+                            <form className='card-body' onSubmit={this.handleSubmit}>
+                                <div className='form-group'>
+                                    <input type='password' placeholder='Current password' className='form-control'
+                                           ref='refCurrentPassword'
+                                           required={true}></input>
+                                </div>
+                                <div className='form-group'>
+                                    <input type='password' placeholder='New password' className='form-control'
+                                           ref='refNewPassword'
+                                           required={true}></input>
+                                </div>
+                                <div className='form-group'>
+                                    <input type='password' placeholder='Repeat new password' className='form-control'
+                                           ref='refRepeatNewPassword'
+                                           required={true}></input>
+                                </div>
+                                <button type='submit' className='btn btn-outline-primary btn-block'>Update</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class AccountComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                this.props.updateAlert([]);
+
+                this.state = {
+                    deleteAccountCodeRequested: false,
+                }
+            }
+
+            handleDataRequest = () => {
+                fetch('{% url 'core:requestCopyOfDataApiEventVersion1Component' %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateAlert(response.data.alerts);
+                        }
+                    })
+            }
+
+            requestDeleteCode = () => {
+                this.setState({
+                    deleteAccountCodeRequested: true,
+                });
+
+                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateAlert(response.data.alerts);
+                        }
+                    })
+            }
+
+            handleDeleteAccount = () => {
+                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'code': this.refs.refAccountDeleteCode.value})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateAlert(response.data.alerts);
+                            window.location.href = '{% url 'core:index-view' %}';
+                        } else {
+                            this.props.updateAlert(response.data.alerts);
+                        }
+                    })
+            }
+
+            render = () => {
+                return (
+                    <div className='col-12 d-flex justify-content-center align-items-center'>
+                        <div className='card w-75'>
+                            <div className='card-body'>
+                                <label className='d-block'>Obtain a copy of your data</label>
+                                <button className='btn btn-outline-primary btn-sm' type='button'
+                                        onClick={this.handleDataRequest}>
+                                    Request data
+                                </button>
+                                <small className='form-text text-muted'>Download your data from Bookrec apps and
+                                    services, which may include purchase history, app usage, and any stored
+                                    data.</small>
+
+                                <hr></hr>
+
+                                <label className='d-block'>Delete your account</label>
+                                {!this.state.deleteAccountCodeRequested ?
+                                    <span>
+                                        <button className='btn btn-outline-info btn-sm' type='button'
+                                                onClick={this.requestDeleteCode}> Request code </button>
+                                        <small className='form-text text-muted'>We'll send you a code to your email. Please copy and paste it below.</small>
+                                    </span>
+                                    :
+                                    <span>
+                                        <input type='text' className='form-control form-control-sm' required={true}
+                                               ref='refAccountDeleteCode'
+                                               placeholder='Enter the code here'></input>
+                                        <br></br>
+                                        <button className='btn btn-danger btn-sm' type='submit'
+                                                onClick={this.handleDeleteAccount}>Delete Account</button>
+                                        <small className='form-text text-muted'>After deleting your account, there's no turning back. Please be sure.</small>
+                                    </span>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class Tabs {
+            constructor(internalKey, isActive, href, component) {
+                this.internalKey = internalKey;
+                this.isActive = isActive;
+                this.href = href;
+                this.component = component;
+            }
+        }
+
+        class BaseComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                this.updateAlert = this.updateAlert.bind(this);
+
+                this.state = {
+                    tabs: [
+                        new Tabs('My profile', true, 'myProfile', <MyProfileComponent updateAlert={this.updateAlert}/>),
+                        new Tabs('Update password', false, 'updatePassword', <UpdatePasswordComponent updateAlert={this.updateAlert}/>),
+                        new Tabs('Account', false, 'account', <AccountComponent updateAlert={this.updateAlert}/>),
+                    ],
+                    alerts: [],
+                }
+            }
+
+            updateAlert = (newAlert) => {
+                this.setState({
+                    alerts: newAlert
+                });
+            }
+
+            updateTabViewShow = (href) => {
+                let tempTabs = this.state.tabs;
+                for (const tab of tempTabs) {
+                    tab.isActive = tab.href === href;
+                }
+                this.setState({
+                    tabs: tempTabs
+                });
+            }
+
+            render() {
+                const spanWidth = {width: '100%'};
+                return (
+                    <div className='container'>
+                        <br></br>
+                        <div className='row justify-content-md-center'>
+                            <div className='btn-group' role='group' aria-label='Shelf'>
+                                {this.state.tabs.map((item, i) =>
+                                    <span key={i}>
+                                        <button type='button' onClick={() => this.updateTabViewShow(item.href)}
+                                                className={item.isActive ? 'btn btn-primary' : 'btn btn-light'}>{item.internalKey}</button>
+                                        &nbsp;
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <br></br>
+
+                        {this.state.alerts.map((item, i) => <div key={i}
+                                                                 className={'text-center alert alert-' + item.alert}
+                                                                 role='alert'>{item.message}</div>)}
+
+                        <br></br>
+
+                        <div className='row'>
+                            {this.state.tabs.map((item, i) => <span key={i}
+                                                                    style={spanWidth}> {item.isActive ? item.component : null} </span>)}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<BaseComponent/>, document.getElementById('div-id-settings-container'));
+
+    </script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js'></script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js'
+            integrity='sha512-8Q6Y9XnTbOE+JNvjBQwJ2H8S+UV4uA6hiRykhdtIyDYZ2TprdNmWOUaKdGzOhyr4dCyk287OejbPvwl7lrfqrQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js'
+            integrity='sha512-MOCpqoRoisCTwJ8vQQiciZv0qcpROCidek3GTFS6KTk2+y7munJIlKCVkFCYY+p3ErYFXCjmFjnfTTRSC1OHWQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js'
+            integrity='sha512-kp7YHLxuJDJcOzStgd6vtpxr4ZU9kjn77e6dBsivSz+pUuAuMlE2UTdKB7jjsWT84qbS8kdCWHPETnP/ctrFsA=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+{% endblock %}
