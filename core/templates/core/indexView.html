@@ -1,0 +1,167 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+{% block content %}
+    <div class='container text-center mt-5'>
+
+        <div class='jumbotron'>
+            <h1 class='display-4'>Welcome to BookRec</h1>
+            <p class='lead'>Search our knowledge base for your next book to read!</p>
+        </div>
+
+        <div class='row mt-4'>
+            <div class='col-md-6 offset-md-3'>
+                <div class='card'>
+                    <div class='card-body'>
+                        <div class='form-group'>
+                            <label for='searchYourself' class='h4'>Search for a book</label>
+                            <input type='text' class='form-control' id='searchYourself'>
+                        </div>
+                        <div class='form-group'>
+                            <label for='categoryList' class='h4'>Or search by category</label>
+                            <select class='form-control' id='categoryList' name='categoryList'>
+                                <option value='-1'>See random books</option>
+                                {% for category in categories %}
+                                    <option value='{{ category }}'>{{ category }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type='submit' class='btn btn-primary btn-block' onclick=getBooks()>Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class='w-75 p-4'></div>
+        {% if recentlyAddedBooks %}
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Recently added books...</p>
+            <div id='recentlyAddedBooks-slider' class='sliderm'>
+                <div class='sliderm__slider'>
+                    <div class='sliderm__slides'>
+                        {% for book in recentlyAddedBooks %}
+                            <div class='sliderm__slide'>
+                                ' <a style='cursor: pointer;' href='{{ book.getUrl }}'>
+                                <p class='lead img-responsive'>
+                                    <img src='{{ book.thumbnail }}' alt='No Image'
+                                         style='height: 200px; width: 200px'>
+                                </p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
+                            </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <div class='w-75 p-4'></div>
+        {% if booksBasedOnRatings %}
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Books based on ratings...</p>
+            <div id='booksBasedOnRatings-slider' class='sliderm'>
+                <div class='sliderm__slider'>
+                    <div class='sliderm__slides'>
+                        {% for book in booksBasedOnRatings %}
+                            <div class='sliderm__slide'>
+                                ' <a style='cursor: pointer;' href='{{ book.getUrl }}'>
+                                <p class='lead img-responsive'>
+                                    <img src='{{ book.thumbnail }}' alt='No Image'
+                                         style='height: 200px; width: 200px'>
+                                </p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
+                            </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <div class='w-75 p-4'></div>
+        {% if booksBasedOnViewings %}
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Books based on viewings...</p>
+            <div id='booksBasedOnViewings-slider' class='sliderm'>
+                <div class='sliderm__slider'>
+                    <div class='sliderm__slides'>
+                        {% for book in booksBasedOnViewings %}
+                            <div class='sliderm__slide'>
+                                ' <a style='cursor: pointer;' href='{{ book.getUrl }}'>
+                                <p class='lead img-responsive'>
+                                    <img src='{{ book.thumbnail }}' alt='No Image'
+                                         style='height: 200px; width: 200px'>
+                                </p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
+                            </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <div class='w-75 p-4'></div>
+        {% if otherUsersFavouriteBooks %}
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Favourite books from similar users...</p>
+            <div id='otherUsersFavouriteBooks-slider' class='sliderm'>
+                <div class='sliderm__slider'>
+                    <div class='sliderm__slides'>
+                        {% for book in otherUsersFavouriteBooks %}
+                            <div class='sliderm__slide'>
+                                ' <a style='cursor: pointer;' href='{{ book.getUrl }}'>
+                                <p class='lead img-responsive'>
+                                    <img src='{{ book.thumbnail }}' alt='No Image'
+                                         style='height: 200px; width: 200px'>
+                                </p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
+                            </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    <script>
+        const SEARCH_YOURSELF_COMPONENT = $('#searchYourself');
+
+        function isEmptyOrSpaces(str) {
+            return str === null || str.match(/^ *$/) !== null;
+        }
+
+        SEARCH_YOURSELF_COMPONENT.on('keyup', function (e) {
+            document.getElementById('categoryList').selectedIndex = 0;
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                getBooks();
+            }
+        });
+
+        function getBooks() {
+            const bookListView = '{% url 'core:book-list-view' %}';
+
+            const searchYourSelf = SEARCH_YOURSELF_COMPONENT.val();
+            if (!isEmptyOrSpaces(searchYourSelf)) {
+                window.location.href = bookListView + '?query=' + searchYourSelf;
+                return;
+            }
+
+            const selectedValue = $('#categoryList').find(':selected').val();
+            if (selectedValue === '-1') {
+                window.location.href = bookListView;
+            } else {
+                window.location.href = bookListView + '?query=' + selectedValue;
+            }
+        }
+
+        let slidersClass = ['#recentlyAddedBooks-slider', '#booksBasedOnRatings-slider', '#booksBasedOnViewings-slider', '#otherUsersFavouriteBooks-slider'];
+        for (const slidersClass1 of slidersClass) {
+            new Sliderm(slidersClass1, {
+                arrow: true,
+                pagination: true,
+                grouping: true,
+                loop: true,
+                preview: false,
+                columns: 6,
+                duration: 1000,
+                spacing: 10,
+                align: 'center',
+                breakpoint: true,
+                autoplay: true,
+            });
+        }
+    </script>
+{% endblock %}
