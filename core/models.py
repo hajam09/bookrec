@@ -20,7 +20,7 @@ class Book(models.Model):
     toRead = models.ManyToManyField(User, related_name='toRead')
     haveRead = models.ManyToManyField(User, related_name='haveRead')
     averageRating = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    ratingCount = models.PositiveIntegerField(default=0, blank=True, null=True)# change to ratingsCount todo
+    ratingCount = models.PositiveIntegerField(default=0, blank=True, null=True)  # todo: change to ratingsCount
 
     def getAuthors(self):
         return ', '.join(self.authors)
@@ -34,11 +34,14 @@ class Book(models.Model):
     def getAverageRating(self):
         return str(self.averageRating)
 
+    def __str__(self):
+        return self.isbn13
+
 
 class BookReview(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='bookReviews')
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
-    description = models.TextField(max_length=1024)
+    description = models.TextField(max_length=1024) # TODO: change this to comment
     rating = models.IntegerField()
     createdDateTime = models.DateTimeField(default=timezone.now)
     modifiedDateTime = models.DateTimeField(auto_now=True)

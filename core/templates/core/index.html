@@ -44,7 +44,7 @@
                                     <img src='{{ book.thumbnail }}' alt='No Image'
                                          style='height: 200px; width: 200px'>
                                 </p>
-                                <p class='text-center'>{{ book.title }}</p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
                             </a>
                             </div>
                         {% endfor %}
@@ -65,7 +65,7 @@
                                     <img src='{{ book.thumbnail }}' alt='No Image'
                                          style='height: 200px; width: 200px'>
                                 </p>
-                                <p class='text-center'>{{ book.title }}</p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
                             </a>
                             </div>
                         {% endfor %}
@@ -86,7 +86,7 @@
                                     <img src='{{ book.thumbnail }}' alt='No Image'
                                          style='height: 200px; width: 200px'>
                                 </p>
-                                <p class='text-center'>{{ book.title }}</p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
                             </a>
                             </div>
                         {% endfor %}
@@ -107,7 +107,7 @@
                                     <img src='{{ book.thumbnail }}' alt='No Image'
                                          style='height: 200px; width: 200px'>
                                 </p>
-                                <p class='text-center'>{{ book.title }}</p>
+                                <p class='text-center'>{{ book.title|truncatechars:24 }}</p>
                             </a>
                             </div>
                         {% endfor %}

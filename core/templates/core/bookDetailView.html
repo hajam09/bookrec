@@ -64,149 +64,198 @@
         }
     </style>
     <div id='div-id-book-container'></div>
-    <div class='container h-100'>
-        <div class='row h-100 align-items-center'>
-            <div class='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
-                <div class='row justify-content-md-center'>
-                    <div class='card'>
-                        <div class='card-body'>
-                            <div class='row'>
-                                <div class='col-sm-4 col-md-auto'>
-                                    <img src='{{ book.thumbnail }}' width='200px'/>
-                                    <div style='height: 5px;'></div>
-                                    <div id='id_shelf_buttons'>
-                                        <div id='div_favourite_container' class='row justify-content-md-center'>
-                                        </div>
-                                        <div style='height: 5px;'></div>
-                                        <div id='div_readingNow_container' class='row justify-content-md-center'>
-                                        </div>
-                                        <div style='height: 5px;'></div>
-                                        <div id='div_toRead_container' class='row justify-content-md-center'>
-                                        </div>
-                                        <div style='height: 5px;'></div>
-                                        <div id='div_haveRead_container' class='row justify-content-md-center'>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class='col-sm-8'>
-                                    <h3 class='card-title'>{{ book.unCleanData.title }}</h3>
-                                    <p class='card-text'>by <a
-                                            href='http://www.google.com/search?q={{ book.unCleanData.authors }}'>{{ book.unCleanData.authors }}</a>
-                                    </p>
-                                    <hr class='my-4'>
-                                    <p class='text-justify' id='p_book_description'>
-                                        {{ book.unCleanData.description|truncatechars:500 }}
-                                        <a style='color:#007bff;cursor: pointer;' onclick='showMore();'>Show More...</a>
-                                    </p>
-                                    <hr class='my-4'>
-                                    <dl class='row'>
-                                        <dt class='col-sm-3'>Publisher</dt>
-                                        <dd class='col-sm-9'>{{ book.unCleanData.publisher }}</dd>
-                                        <dt class='col-sm-3'>Genre</dt>
-                                        <dd class='col-sm-9'>{{ book.unCleanData.genre }}</dd>
-                                        <dt class='col-sm-3'>Published Date</dt>
-                                        <dd class='col-sm-9'>{{ book.unCleanData.publishedDate }}</dd>
-                                        <dt class='col-sm-3'>Rating</dt>
-                                        <dd class='col-sm-9'></dd>
-                                    </dl>
-                                    <hr class='my-4'>
-                                </div>
-                            </div>
-                            <div class='w-75 p-3'></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class='row h-100 align-items-center'>
-            <div class='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
-                <div class='row justify-content-md-center'>
-                    <div class='col-sm-12'>
-                        <div class='card'>
-                            <div class='card-body'>
-                                {% if similarBooks %}
-                                    <p style='font-weight:bold;font-size: 20px'>Recently Added Books</p>
-                                    <div class='swiper-container'>
-                                        <div class='swiper-wrapper'>
-                                            {% for books in similarBooks %}
-                                                <div class='swiper-slide'>
-                                                    <a style='cursor: pointer;'
-                                                       href='{% url 'book:bookPage' books.isbn13 %}'>
-                                                        <p class='lead img-responsive'>
-                                                            <img src='https://via.placeholder.com/200x300'
-                                                                 alt='No Image' style='height: 200px;'>
-                                                            <!-- {{books.thumbnail}} -->
-                                                        </p>
-                                                        <p align='center'>{{ books.title }}</p>
-                                                    </a>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                        <div class='swiper-button-prev'></div>
-                                        <div class='swiper-button-next'></div>
-                                        <div class='swiper-scrollbar'></div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class='row h-100 align-items-center'>
-            <div class='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
-                <div class='row justify-content-md-center'>
-                    <div class='col-sm-12'>
-                        <div class='card'>
-                            <div method='post' class='bg-white rounded shadow-sm p-4 mb-5 rating-review-select-page'>
-                                {% csrf_token %}
-                                <p style='font-weight:bold;font-size: 20px'>Leave Comment</p>
-                                <div class='mb-4'>
-								<span class='star-rating' id='star-rating'>
-								</span>
-                                </div>
-                                <div class='form-group'>
-                                    <label>Your Comment</label>
-                                    <textarea class='form-control' id='id-comment-text-area' name='comment-text-area'
-                                              rows='5' onkeydown='bookCommentBoxListener()'
-                                              onkeypress='bookCommentBoxListener()' onkeyup='bookCommentBoxListener()'
-                                              required></textarea>
-                                    <label id='id-minimum-characters-left'>Minimum characters left: 100</label>
-                                </div>
-                                <div class='form-group'>
-                                    <button class='btn btn-primary btn-sm' type='submit' id='comment-submit-button'
-                                            onclick='submitBookComment();' disabled> Submit Comment
-                                    </button>
-                                </div>
-
-                                <hr/>
-                                <div class='row'>
-                                    <div class='col'>
-                                        <p style='font-weight:bold;font-size: 20px'>All rating and reviews</p>
-                                    </div>
-                                    <div class='col'>
-                                        <select id='bookReivewDropDownList' class='pull-right' style='width: auto;'
-                                                onchange='newDropdownListSelected();'>
-                                            <option value='NewestFirst'>Newest first</option>
-                                            <option value='OldestFirst'>Oldest first</option>
-                                            <option value='TopReview'>Top review</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div id='id-book-comment-container'></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script type='text/babel'>
+
+        class ShelfButtons extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    isInFavourite: false,
+                    isInReadingNow: false,
+                    isInToRead: false,
+                    isInHasRead: false
+                }
+
+                this.fetchUserBookDetail();
+            }
+
+            fetchUserBookDetail = () => {
+                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                isInFavourite: response.data.isInFavourite,
+                                isInReadingNow: response.data.isInReadingNow,
+                                isInToRead: response.data.isInToRead,
+                                isInHasRead: response.data.isInHasRead
+                            });
+                        }
+                    })
+            }
+
+            updateUserBookDetail = (field, action) => {
+                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'field': field, 'action': action})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.fetchUserBookDetail();
+                        }
+                    })
+            }
+
+            render() {
+                return (
+                    <div>
+                        {
+                            this.state.isInFavourite ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('isFavourite', 'remove')}>Remove from
+                                    favourites</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('isFavourite', 'add')}>Add to
+                                    favourites</button>
+                        }
+                        {
+                            this.state.isInReadingNow ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('readingNow', 'remove')}>Not reading
+                                    now</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('readingNow', 'add')}>I am reading
+                                    it
+                                    now</button>
+                        }
+                        {
+                            this.state.isInToRead ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('toRead', 'remove')}>Remove from
+                                    to
+                                    read</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('toRead', 'add')}>I need to
+                                    read
+                                    this</button>
+                        }
+                        {
+                            this.state.isInHasRead ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('haveRead', 'remove')}>I haven't
+                                    read
+                                    this</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('haveRead', 'add')}>I have read
+                                    this</button>
+                        }
+                    </div>
+                );
+            }
+        }
+
+        class StarRatingComponent extends React.Component {
+            constructor(props) {
+                super(props);
+
+                let result = [];
+                const rating = this.roundHalf(parseFloat('{{ book.averageRating }}'));
+                const isRatingAValueOfHalf = !Number.isInteger(rating);
+                const Sizes = {FULL: 'FULL', HALF: 'HALF', EMPTY: 'EMPTY'};
+
+
+                for (let i = 0; i < rating; i++) {
+                    result.push(Sizes.FULL);
+                }
+                if (isRatingAValueOfHalf) {
+                    result[result.length - 1] = Sizes.HALF;
+                }
+                while (true) {
+                    if (result.length === 10)
+                        break;
+                    result.push(Sizes.EMPTY);
+                }
+
+                this.state = {
+                    Sizes: Sizes,
+                    result: result,
+                }
+            }
+
+            roundHalf = (value) => {
+                let converted = parseFloat(value); // Make sure we have a number
+                let decimal = (converted - parseInt(converted, 10));
+                decimal = Math.round(decimal * 10);
+                if (decimal === 5) {
+                    return (parseInt(converted, 10) + 0.5);
+                }
+                if ((decimal < 3) || (decimal > 7)) {
+                    return Math.round(converted);
+                } else {
+                    return (parseInt(converted, 10) + 0.5);
+                }
+            }
+
+            getStar = (size) => {
+                const starSize = {fontSize: '18px'};
+                if (size === this.state.Sizes.FULL)
+                    return (
+                        <i style={starSize} className='fa'>&#xf005;</i>
+                    )
+                else if (size === this.state.Sizes.HALF)
+                    return (
+                        <i style={starSize} className='fa'>&#xf123;</i>
+                    )
+                else if (size === this.state.Sizes.EMPTY)
+                    return (
+                        <i style={starSize} className='fa'>&#xf006;</i>
+                    )
+                throw new Error('size for star not found')
+            }
+
+            render() {
+                return (
+                    <div>
+                        {this.state.result.map((starSize) => this.getStar(starSize))} ({{ book.ratingCount }})
+                    </div>
+                )
+            }
+        }
 
         class BookComponent extends React.Component {
             constructor(props) {
                 super(props);
+                let authors = [];
+                let genres = [];
+
+                {% for authors in book.authors %}
+                    authors.push('{{ authors }}')
+                {% endfor %}
+
+                {% for genre in book.categories %}
+                    genres.push('{{ genre }}')
+                {% endfor %}
+
+                this.state = {
+                    isAuthenticated: '{{ user.is_authenticated }}' === 'True',
+                    authors: authors,
+                    description: '{{ book.description }}',
+                    descriptionExpanded: false,
+                    genres: genres,
+                }
+            }
+
+            showMoreOrLessDescription = () => {
+                this.setState({descriptionExpanded: !this.state.descriptionExpanded});
             }
 
             render() {
@@ -215,69 +264,304 @@
                         <div className='card-body'>
                             <div className='row'>
                                 <div className='col-sm-4 col-md-auto'>
-                                    <img src='{{ book.thumbnail }}' width='200px'></img>
-                                    <div id='id_shelf_buttons'>
-                                        <div id='div_favourite_container' className='row justify-content-md-center'>
-                                            <button type="button"
-                                                    className="btn btn-outline-dark btn-sm btn-block">Small button
-                                            </button>
-                                        </div>
-                                        <div id='div_readingNow_container' className='row justify-content-md-center'>
-                                        </div>
-                                        <div id='div_toRead_container' className='row justify-content-md-center'>
-                                        </div>
-                                        <div id='div_haveRead_container' className='row justify-content-md-center'>
-                                        </div>
-                                    </div>
+                                    <img src='{{ book.thumbnail }}' width='200px' alt='No Image'></img>
+                                    <div className='w-75 p-3'></div>
+                                    {this.state.isAuthenticated ? <ShelfButtons/> : null}
+
                                 </div>
                                 <div className='col-sm-8'>
-                                    <h3 className='card-title'>{{ book.unCleanData.title }}</h3>
-                                    <p className='card-text'>by
-                                        <a href='http://www.google.com/search?q={{ book.unCleanData.authors }}'>{{ book.unCleanData.authors }}</a>
+                                    <h3 className='card-title'>{{ book.title }}</h3>
+                                    <p className='card-text'>by &nbsp;
+                                        {this.state.authors.map((author, index) =>
+                                            <span>
+                                                <a href={'http://www.google.com/search?q=' + author}
+                                                   target='_blank'>{author}</a>
+                                                {index !== this.state.authors.length - 1 ? ', ' : null}
+                                            </span>)}
                                     </p>
                                     <hr className='my-4'></hr>
                                     <p className='text-justify' id='p_book_description'>
-                                        {{ book.unCleanData.description|truncatechars:500 }}
-                                        <a className='color:#007bff;cursor: pointer;' onClick='showMore();'>Show
-                                            More...</a>
+                                        {this.state.descriptionExpanded ? this.state.description : this.state.description.substring(0, 500)}
+                                        <button type='button' className='btn btn-link'
+                                                onClick={this.showMoreOrLessDescription}>
+                                            {this.state.descriptionExpanded ? 'Show less' : 'Show more'}
+                                        </button>
                                     </p>
                                     <hr className='my-4'></hr>
                                     <dl className='row'>
                                         <dt className='col-sm-3'>Publisher</dt>
                                         <dd className='col-sm-9'>{{ book.publisher }}</dd>
                                         <dt className='col-sm-3'>Genre</dt>
-                                        <dd className='col-sm-9'>{{ book.genre }}</dd>
+                                        <dd className='col-sm-9'>
+
+                                            {this.state.genres.map((genre, index) =>
+                                                <span> {genre}
+                                                    {index !== this.state.genres.length - 1 ? ', ' : null}
+                                            </span>)}
+                                        </dd>
                                         <dt className='col-sm-3'>Published Date</dt>
                                         <dd className='col-sm-9'>{{ book.publishedDate }}</dd>
                                         <dt className='col-sm-3'>Rating</dt>
-                                        <dd className='col-sm-9'></dd>
+                                        <dd className='col-sm-9'><StarRatingComponent/></dd>
                                     </dl>
                                     <hr className='my-4'></hr>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )
+                );
             }
         }
 
         class SimilarBooksComponent extends React.Component {
             constructor(props) {
                 super(props);
+                let bookList = [];
+                {% for books in similarBooks %}
+                    bookList.push({
+                        title: '{{ books.title }}',
+                        thumbnail: '{{ books.thumbnail }}',
+                        url: '{{ books.getUrl }}',
+                    });
+                {% endfor %}
+
+                this.state = {
+                    books: bookList
+                }
+            }
+
+            componentDidMount = () => {
+                new Sliderm('#similarBooks-slider', {
+                    arrow: true,
+                    pagination: true,
+                    grouping: true,
+                    loop: true,
+                    preview: false,
+                    columns: 6,
+                    duration: 1000,
+                    spacing: 10,
+                    align: 'center',
+                    breakpoint: true,
+                    autoplay: true,
+                });
             }
 
             render() {
+                const fontSize = {fontWeight: 'bold', fontSize: '20px'};
+                const bookCursor = {cursor: 'pointer'};
+                const bookThumbnailSize = {height: '200px', width: '200px'};
                 return (
-                    <div className='card'>
-                        <div className='card-body'>
-                            <div className='row'>
-                                <div className='col-sm-4 col-md-auto'>
-                                    SimilarBooksComponent
+                    <span>
+                        <p style={fontSize} className='text-left'>Similar Book's...</p>
+                        <div id='similarBooks-slider' className='sliderm'>
+                            <div className='sliderm__slider'>
+                                <div className='sliderm__slides'>
+                                    {this.state.books.map((book) =>
+                                        <div className='sliderm__slide'>
+                                            <a style={bookCursor} href={book.url}>
+                                                <p className='lead img-responsive'>
+                                                    <img src={'https://dummyimage.com/200x200'}
+                                                         style={bookThumbnailSize} alt='No Image'></img>
+                                                    <p className='text-center'>{
+                                                        book.title.length > 20 ? book.title.slice(0, 20 - 1) + '...' : book.title
+                                                    }</p></p>
+                                            </a>
+                                        </div>)
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </span>
+                )
+            }
+        }
+
+        class ReviewElementComponent extends React.Component {
+            constructor(props) {
+                super(props);
+            }
+
+            render() {
+                const thumbSize = {fontSize: '15px'}
+                return (
+                    <div className='container'>
+                        <div className='row m-0'>
+                            <img src='https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png' width='25' height='25' alt='...'/>
+                            <div className='flex-grow-1 pl-2'>
+                                <span className='text-capitalize mb-0'>
+                                    <span className='text-capitalize mb-0'>{this.props.review.name}</span>
+                                    &nbsp;
+                                    <span className='small text-secondary m-0 mt-1'>2 days ago (edited)</span>
+                                </span>
+                            </div>
+                        </div>
+                        <p className='my-2'>
+                            {this.props.review.description.split('\n').map((s) => <p>{s}</p>)}
+                        </p> ⭐⭐⭐⭐⭐
+                        <footer>
+                            <button type='button' className='btn btn-primary btn-sm'>
+                                <i className='far fa-thumbs-up' style={thumbSize}></i> (10)
+                            </button>
+                            &nbsp;&nbsp;
+                            <button type='button' className='btn btn-primary btn-sm'>
+                                <i className='far fa-thumbs-down' style={thumbSize}></i> (20)
+                            </button>
+                        </footer>
+                        <br></br>
+                    </div>
+                );
+            }
+        }
+
+        class ReviewCapsuleComponent extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    reviews: [
+                        {
+                            'id': 1,
+                            'name': 'Django Admin',
+                            'edited': false,
+                            'description': 'sda\nsa\nas\ndsa\nd',
+                            'likesCount': 0,
+                            'dislikesCount': 0,
+                            'canEdit': true,
+                            'createdDateTime': '2024-03-10T06:57:14.296709Z',
+                            'modifiedDateTime': '2024-03-10T06:57:14.297709Z'
+                        },
+                        {
+                            'id': 2,
+                            'name': 'Django Admin',
+                            'edited': false,
+                            'description': 'sadasd\nasd\nasd\nas\ndsa',
+                            'likesCount': 0,
+                            'dislikesCount': 0,
+                            'canEdit': true,
+                            'createdDateTime': '2024-03-10T06:57:17.309281Z',
+                            'modifiedDateTime': '2024-03-10T06:57:17.310282Z'
+                        }
+                    ],
+                }
+            }
+
+            componentDidMount = () => {
+                // this.fetchBookComment();
+            }
+
+            fetchBookComment = () => {
+                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                reviews: response.data.reviews
+                            });
+                        }
+                    })
+            }
+
+            render() {
+                const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
+                const reviewDropdownStyle = {width: 'auto'};
+                return (
+                    <div className='bg-white rounded shadow-sm p-4 mb-5'>
+                        <div className='row'>
+                            <div className='col'><p style={headerStyle}>Reviews</p></div>
+                            <div className='col'>
+                                <select className='form-control float-right' name='cars' id='cars'
+                                        style={reviewDropdownStyle}>
+                                    <option value='top'>Top</option>
+                                    <option value='bottom'>Bottom</option>
+                                    <option value='new'>New</option>
+                                    <option value='old'>Old</option>
+                                    <option value='controversial'>Controversial</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className='row'>
+                            {this.state.reviews.map((item) => <ReviewElementComponent key={item.id} review={item}/>)}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class CommentComponent extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    submitButtonDisabled: true,
+                    commentValue: '',
+                }
+            }
+
+            submitBookComment = () => {
+                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'comment': this.state.commentValue, 'rating': null})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            document.getElementById('id-textarea-CommentTextArea').value = '';
+                            this.setState({
+                                submitButtonDisabled: true,
+                                commentValue: ''
+                            });
+                        }
+                    })
+            }
+
+            bookCommentBoxListener = () => {
+                this.setState({
+                    submitButtonDisabled: this.refs.refCommentTextArea.value.trim().length === 0,
+                    commentValue: this.refs.refCommentTextArea.value.trim()
+                });
+            }
+
+            render() {
+                const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
+                return (
+                    <div className='row h-100 align-items-center'>
+                        <div className='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
+                            <div className='row justify-content-md-center'>
+                                <div className='col-sm-12'>
+                                    <div className='card'>
+                                        <div className='bg-white rounded shadow-sm p-4 mb-5'>
+                                            <p style={headerStyle}>Leave Comment</p>
+                                            <div className='form-group'>
+                                                <label>Your Comment</label>
+                                                <textarea className='form-control' rows={5} required={true}
+                                                          id='id-textarea-CommentTextArea'
+                                                          defaultValue={this.state.commentValue}
+                                                          ref='refCommentTextArea'
+                                                          onInput={this.bookCommentBoxListener}></textarea>
+                                            </div>
+
+                                            <div className='form-group'>
+                                                <button className='btn btn-primary btn-sm' type='submit'
+                                                        id='comment-submit-button' onClick={this.submitBookComment}
+                                                        disabled={this.state.submitButtonDisabled}> Submit Comment
+                                                </button>
+                                            </div>
+
+                                        </div>
+                                        <hr></hr>
+                                        <ReviewCapsuleComponent/>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )
+                );
             }
         }
 
@@ -294,15 +578,14 @@
                         <BookComponent/>
                         <div className='w-75 p-4'></div>
                         <SimilarBooksComponent/>
+                        <div className='w-75 p-4'></div>
+                        <CommentComponent/>
                     </div>
-                )
+                );
             }
         }
 
-
-        ReactDOM.render(
-            <BaseComponent/>
-            , document.getElementById('div-id-book-container'));
+        ReactDOM.render(<BaseComponent/>, document.getElementById('div-id-book-container'));
     </script>
 
     <script src='https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js'

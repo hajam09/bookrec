@@ -1,7 +1,11 @@
 import datetime
+import re
+import unidecode
 
 import pandas
 import requests
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import sigmoid_kernel
 from sklearn.preprocessing import MinMaxScaler
 
 from core.models import Book, Category
@@ -203,13 +207,54 @@ def otherUsersFavouriteBooks(request):
         Return list of other favourite books from similar user(s).
         Attributes to determine the similarity: list of favourite books from each user.
     """
-    if not request.user.is_authenticated or request.user.is_superuser:
+    if not request.user.is_authenticated:
         return []
     return []
 
 
 def similarBooks(book):
     """
-        Make recommendations based on the books’s description.
+        Content Based Recommendation System - Make recommendations based on the book's description.
     """
-    return []
+    allBooks = Book.objects.all().prefetch_related('isFavourite')
+    if allBooks.count() == 0:
+        return []
+
+    tfv = TfidfVectorizer(
+        min_df=3,
+        max_features=None,
+        strip_accents='unicode',
+        analyzer='word',
+        token_pattern=r'\w{1,}',
+        ngram_range=(1, 3),
+        stop_words='english'
+    )
+
+    bookSerializer = BookSerializer(allBooks, many=True)
+    df = pandas.DataFrame(bookSerializer.data)
+    df['description'] = df['description'].fillna('')
+
+    tfvMatrix = tfv.fit_transform(df['description'])
+    sigmoidKernel = sigmoid_kernel(tfvMatrix, tfvMatrix)
+    indices = pandas.Series(df.index, index=df['title']).drop_duplicates()
+
+    bookTitle = book.title.replace(',', '').replace('-', '').replace('–', '')
+    bookTitle = ''.join(e for e in bookTitle if e.isalnum() or e == ' ')
+    bookTitle = re.sub(' +', ' ', bookTitle)
+    bookTitle = unidecode.unidecode(bookTitle)
+
+    def giveRecommendation():
+        try:
+            idx = indices[bookTitle].iloc[0]
+        except:
+            print('triggerd here with exception')
+            idx = indices[bookTitle]
+        sigmoidScores = list(enumerate(sigmoidKernel[idx]))
+        sigmoidScores = sorted(sigmoidScores, key=lambda x: x[1], reverse=True)
+        sigmoidScores = sigmoidScores[1:11]
+        bookIndices = [i[0] for i in sigmoidScores]
+        return df['title'].iloc[bookIndices]
+
+    originalTable = giveRecommendation()
+    df = df[df.title.isin(list(originalTable))]
+    return Book.objects.filter(isbn13__in=list(df['isbn13']))

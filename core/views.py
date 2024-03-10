@@ -32,6 +32,7 @@ def bookDetailView(request, isbn13):
 
     context = {
         'book': book,
+        'similarBooks': bookOperations.similarBooks(book),
         'reviews': BookReview.objects.filter(book=book).order_by('-createdDateTime'),
     }
     return render(request, 'core/bookDetailView.html', context)
