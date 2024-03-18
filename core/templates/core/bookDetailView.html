@@ -379,110 +379,135 @@
         class ReviewElementComponent extends React.Component {
             constructor(props) {
                 super(props);
-            }
-
-            render() {
-                const thumbSize = {fontSize: '15px'}
-                return (
-                    <div className='container'>
-                        <div className='row m-0'>
-                            <img src='https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png' width='25' height='25' alt='...'/>
-                            <div className='flex-grow-1 pl-2'>
-                                <span className='text-capitalize mb-0'>
-                                    <span className='text-capitalize mb-0'>{this.props.review.name}</span>
-                                    &nbsp;
-                                    <span className='small text-secondary m-0 mt-1'>2 days ago (edited)</span>
-                                </span>
-                            </div>
-                        </div>
-                        <p className='my-2'>
-                            {this.props.review.description.split('\n').map((s) => <p>{s}</p>)}
-                        </p> ⭐⭐⭐⭐⭐
-                        <footer>
-                            <button type='button' className='btn btn-primary btn-sm'>
-                                <i className='far fa-thumbs-up' style={thumbSize}></i> (10)
-                            </button>
-                            &nbsp;&nbsp;
-                            <button type='button' className='btn btn-primary btn-sm'>
-                                <i className='far fa-thumbs-down' style={thumbSize}></i> (20)
-                            </button>
-                        </footer>
-                        <br></br>
-                    </div>
-                );
-            }
-        }
-
-        class ReviewCapsuleComponent extends React.Component {
-            constructor(props) {
-                super(props);
 
                 this.state = {
-                    reviews: [
-                        {
-                            'id': 1,
-                            'name': 'Django Admin',
-                            'edited': false,
-                            'description': 'sda\nsa\nas\ndsa\nd',
-                            'likesCount': 0,
-                            'dislikesCount': 0,
-                            'canEdit': true,
-                            'createdDateTime': '2024-03-10T06:57:14.296709Z',
-                            'modifiedDateTime': '2024-03-10T06:57:14.297709Z'
-                        },
-                        {
-                            'id': 2,
-                            'name': 'Django Admin',
-                            'edited': false,
-                            'description': 'sadasd\nasd\nasd\nas\ndsa',
-                            'likesCount': 0,
-                            'dislikesCount': 0,
-                            'canEdit': true,
-                            'createdDateTime': '2024-03-10T06:57:17.309281Z',
-                            'modifiedDateTime': '2024-03-10T06:57:17.310282Z'
-                        }
-                    ],
+                    editMode: false,
                 }
             }
 
-            componentDidMount = () => {
-                // this.fetchBookComment();
-            }
-
-            fetchBookComment = () => {
-                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
-                    method: 'GET',
+            voteComment = (id, direction) => {
+                fetch('{% url 'core:bookReviewVotingActionApiEventVersion1Component' %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'id': id, 'direction': direction})
                 }).then((response) => response.json())
                     .then((response) => {
                         if (response.success) {
-                            this.setState({
-                                reviews: response.data.reviews
-                            });
+                            this.props.updateComment(response.data.review);
                         }
                     })
             }
 
+            editComment = () => {
+                this.setState({
+                    editMode: !this.state.editMode
+                });
+            }
+            cancelUpdateComment = () => {
+                this.setState({
+                    editMode: false
+                });
+            }
+
+            submitNewComment = () => {
+                if (this.refs.refCommentTextAreaUpdate.value.trim().length !== 0) {
+                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Encoding': 'gzip',
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        dataType: 'json',
+                        body: JSON.stringify({
+                            'id': this.props.review.id,
+                            'comment': this.refs.refCommentTextAreaUpdate.value.trim()
+                        })
+                    }).then((response) => response.json())
+                        .then((response) => {
+                            if (response.success) {
+                                this.cancelUpdateComment();
+                                this.props.updateComment(response.data.review);
+                            }
+                        })
+                }
+            }
+
+            deleteComment = () => {
+                if (confirm('Are you sure?')) {
+                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Encoding': 'gzip',
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        dataType: 'json',
+                        body: JSON.stringify({'id': this.props.review.id})
+                    }).then((response) => response.json())
+                        .then((response) => {
+                            if (response.success) {
+                                this.props.deleteComment(this.props.review.id);
+                            }
+                        })
+
+                } else {
+
+                }
+            }
+
             render() {
-                const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
-                const reviewDropdownStyle = {width: 'auto'};
+                let upVoting = {cursor: 'pointer', color: this.props.review.userVote.upVoted ? 'blue' : 'black'}
+                let downVoting = {cursor: 'pointer', color: this.props.review.userVote.downVoted ? 'red' : 'black'}
+                let editAndDeleteButton = {fontSize: '13px', cursor: 'pointer'};
                 return (
-                    <div className='bg-white rounded shadow-sm p-4 mb-5'>
-                        <div className='row'>
-                            <div className='col'><p style={headerStyle}>Reviews</p></div>
-                            <div className='col'>
-                                <select className='form-control float-right' name='cars' id='cars'
-                                        style={reviewDropdownStyle}>
-                                    <option value='top'>Top</option>
-                                    <option value='bottom'>Bottom</option>
-                                    <option value='new'>New</option>
-                                    <option value='old'>Old</option>
-                                    <option value='controversial'>Controversial</option>
-                                </select>
+                    <div className='container'>
+                        <div className='row m-0'>
+                            <img src='https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png'
+                                 width='25' height='25' alt='...'/>
+                            <div className='flex-grow-1 pl-2'>
+                                <span className='mb-0'>
+                                    <span className='text-capitalize mb-0'>{this.props.review.name}</span>
+                                    &nbsp;
+                                    <span className='small text-secondary m-0 mt-1'>
+                                        {this.props.review.createdDateTime.humanize} ago {this.props.review.edited ? '(edited)' : null}
+                                    </span>
+                                </span>
                             </div>
                         </div>
-                        <div className='row'>
-                            {this.state.reviews.map((item) => <ReviewElementComponent key={item.id} review={item}/>)}
+                        <p className='my-2'>
+                            {this.state.editMode ? <textarea className='form-control' rows={5} required={true}
+                                                             defaultValue={this.props.review.description}
+                                                             ref='refCommentTextAreaUpdate'
+                                                             id='id-textarea-CommentTextArea-update'></textarea> : this.props.review.description.split('\n').map((s) =>
+                                <p>{s}</p>)}
+                            {this.state.editMode ? <a href onClick={this.cancelUpdateComment}
+                                                      style={editAndDeleteButton}>Cancel</a> : null}
+                            &nbsp;
+                            {this.state.editMode ?
+                                <a href onClick={this.submitNewComment} style={editAndDeleteButton}>Update</a> : null}
+                        </p>
+                        {[...Array(this.props.review.rating).keys()].map(() => <i className='fas fa-star'></i>)}
+                        {[...Array(5 - this.props.review.rating).keys()].map(() => <i className='far fa-star'></i>)}
+                        <div className='d-flex flex-row align-items-center voting-icons'>
+                            <i className='fa fa-sort-up fa-2x mt-3' style={upVoting}
+                               onClick={() => this.voteComment(this.props.review.id, 'UP')}></i>
+                            <span className='ml-2'>{this.props.review.netVote}</span>
+                            &nbsp;
+                            <i className='fa fa-sort-down fa-2x mb-3' style={downVoting}
+                               onClick={() => this.voteComment(this.props.review.id, 'DOWN')}></i>
                         </div>
+                        {this.props.review.canEdit && !this.state.editMode ?
+                            <a href onClick={this.editComment} style={editAndDeleteButton}>Edit</a> : null}
+                        &nbsp;
+                        {this.props.review.canEdit && !this.state.editMode ?
+                            <a href onClick={this.deleteComment} style={editAndDeleteButton}>Delete</a> : null}
+                        <hr></hr>
                     </div>
                 );
             }
@@ -495,7 +520,49 @@
                 this.state = {
                     submitButtonDisabled: true,
                     commentValue: '',
+                    reviews: [],
+                    page: 1,
+                    hasMore: false,
                 }
+
+                this.updateComment = this.updateComment.bind(this);
+                this.deleteComment = this.deleteComment.bind(this);
+            }
+
+            componentDidMount = () => {
+                this.fetchBookComment();
+            }
+
+            updateComment = (newComment) => {
+                let reviews = this.state.reviews;
+                const lookUpReviewIndex = reviews.findIndex(review => review.id === newComment.id);
+                reviews[lookUpReviewIndex] = newComment;
+                this.setState({
+                    reviews: reviews
+                });
+            }
+
+            deleteComment = (id) => {
+                let reviews = this.state.reviews;
+                let newReviews = reviews.filter(item => item.id !== id);
+                this.setState({
+                    reviews: newReviews
+                });
+            }
+
+            fetchBookComment = () => {
+                const sortCommentBy = document.getElementById('review-sort-by').value
+                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}' + '?sort-by=' + sortCommentBy + '&page=' + this.state.page, {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                reviews: this.state.reviews.concat(response.data.reviews),
+                                hasMore: response.data.hasMore
+                            });
+                        }
+                    })
             }
 
             submitBookComment = () => {
@@ -512,7 +579,10 @@
                     .then((response) => {
                         if (response.success) {
                             document.getElementById('id-textarea-CommentTextArea').value = '';
+                            let oldReviews = this.state.reviews;
+                            oldReviews.unshift(response.data.review);
                             this.setState({
+                                review: oldReviews,
                                 submitButtonDisabled: true,
                                 commentValue: ''
                             });
@@ -527,18 +597,35 @@
                 });
             }
 
+            loadMoreComments = () => {
+                this.setState({
+                    page: this.state.page + 1
+                }, () => {
+                    this.fetchBookComment();
+                })
+            }
+
+            sortByDropdownChangedEvent = () => {
+                this.setState({
+                    reviews: [],
+                    page: 1,
+                }, () => {
+                    this.fetchBookComment();
+                })
+            }
+
             render() {
                 const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
+                const reviewDropdownStyle = {width: 'auto'};
                 return (
                     <div className='row h-100 align-items-center'>
                         <div className='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
                             <div className='row justify-content-md-center'>
                                 <div className='col-sm-12'>
                                     <div className='card'>
-                                        <div className='bg-white rounded shadow-sm p-4 mb-5'>
+                                        <div className='bg-white rounded shadow-sm p-4'>
                                             <p style={headerStyle}>Leave Comment</p>
                                             <div className='form-group'>
-                                                <label>Your Comment</label>
                                                 <textarea className='form-control' rows={5} required={true}
                                                           id='id-textarea-CommentTextArea'
                                                           defaultValue={this.state.commentValue}
@@ -555,7 +642,37 @@
 
                                         </div>
                                         <hr></hr>
-                                        <ReviewCapsuleComponent/>
+
+
+                                        <div className='bg-white rounded shadow-sm p-4 mb-5'>
+                                            <div className='row'>
+                                                <div className='col'><p style={headerStyle}>Reviews</p></div>
+                                                <div className='col'>
+                                                    <select className='form-control float-right' name='review-sort-by'
+                                                            id='review-sort-by'
+                                                            onChange={this.sortByDropdownChangedEvent}
+                                                            style={reviewDropdownStyle}>
+                                                        <option value='top'>Top</option>
+                                                        <option value='bottom'>Bottom</option>
+                                                        <option value='new'>New</option>
+                                                        <option value='old'>Old</option>
+                                                        <option value='controversial'>Controversial</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className='row'>
+                                                {this.state.reviews.map((item) => <ReviewElementComponent key={item.id}
+                                                                                                          updateComment={this.updateComment}
+                                                                                                          deleteComment={this.deleteComment}
+                                                                                                          review={item}/>)}
+                                            </div>
+
+                                            {this.state.hasMore ? <button type='button' className='btn btn-info btn-sm'
+                                                                          onClick={this.loadMoreComments}>Load
+                                                more</button> : null}
+                                        </div>
+
+
                                     </div>
                                 </div>
                             </div>

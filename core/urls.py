@@ -22,4 +22,9 @@ urlpatterns += [
         BookReviewActionApiEventVersion1Component.as_view(),
         name='bookReviewActionApiEventVersion1Component'
     ),
+    path(
+        'api/v1/bookReviewVotingActionApiEventVersion1Component',
+        BookReviewVotingActionApiEventVersion1Component.as_view(),
+        name='bookReviewVotingActionApiEventVersion1Component'
+    ),
 ]

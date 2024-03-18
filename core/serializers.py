@@ -1,3 +1,4 @@
+from django.utils.timesince import timesince
 from rest_framework import serializers
 
 from core.models import Book, BookReview
@@ -9,7 +10,14 @@ class BookSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ['title', 'description', 'isbn13', 'averageRating', 'ratingCount', 'favouritesCount']
+        fields = [
+            'title',
+            'description',
+            'isbn13',
+            'averageRating',
+            'ratingCount',
+            'favouritesCount'
+        ]
 
     def get_favouritesCount(self, book):
         return book.isFavourite.count()
@@ -20,21 +28,38 @@ class BookSerializer(serializers.ModelSerializer):
 
 class BookReviewSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField('_name')
-    likesCount = serializers.SerializerMethodField('_likesCount')
-    dislikesCount = serializers.SerializerMethodField('_dislikesCount')
+    netVote = serializers.SerializerMethodField('_netVote')
     canEdit = serializers.SerializerMethodField('_canEdit')
+    createdDateTime = serializers.SerializerMethodField('_createdDateTime')
+    modifiedDateTime = serializers.SerializerMethodField('_modifiedDateTime')
+    userVote = serializers.SerializerMethodField('_userVote')
 
     def _name(self, review):
         return review.creator.get_full_name()
 
-    def _likesCount(self, review):
-        return review.likes.count()
-
-    def _dislikesCount(self, review):
-        return review.dislikes.count()
+    def _netVote(self, review):
+        return review.likes.count() - review.dislikes.count()
 
     def _canEdit(self, review):
         return review.creator == self.context.get('request').user
+
+    def _createdDateTime(self, review):
+        return {
+            'python': review.createdDateTime,
+            'humanize': timesince(review.createdDateTime),
+        }
+
+    def _modifiedDateTime(self, review):
+        return {
+            'python': review.modifiedDateTime,
+            'humanize': timesince(review.modifiedDateTime),
+        }
+
+    def _userVote(self, review):
+        return {
+            'upVoted': self.context.get('request').user in review.likes.all(),
+            'downVoted': self.context.get('request').user in review.dislikes.all(),
+        }
 
     class Meta:
         model = BookReview
@@ -43,9 +68,10 @@ class BookReviewSerializer(serializers.ModelSerializer):
             'name',
             'edited',
             'description',
-            'likesCount',
-            'dislikesCount',
+            'netVote',
             'canEdit',
+            'rating',
             'createdDateTime',
             'modifiedDateTime',
+            'userVote',
         ]
