@@ -105,13 +105,13 @@ def googleBooksAPIRequests(query):
             continue
 
         categories = item.get('volumeInfo').get('categories') or []
-        baseCategories = [splitItem.strip() for category in categories for splitItem in category.split("/")]
+        baseCategories = [splitItem.strip() for category in categories for splitItem in category.split('/')]
 
         selfLink = item.get('selfLink')
         additionalData = requests.get(selfLink).json()
 
         categories = additionalData.get('volumeInfo').get('categories') or []
-        additionalCategories = [splitItem.strip() for category in categories for splitItem in category.split("/")]
+        additionalCategories = [splitItem.strip() for category in categories for splitItem in category.split('/')]
 
         joinedCategories = list(set(baseCategories + additionalCategories))
         combinedCategories += joinedCategories

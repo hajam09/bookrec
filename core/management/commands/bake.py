@@ -8,9 +8,8 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from faker import Faker
 
-from accounts.models import Profile
 from bookrec.operations import bookOperations
-from core.models import Book, BookReview, Category
+from core.models import Book, BookReview, Category, Profile
 
 
 class Command(BaseCommand):
@@ -37,11 +36,6 @@ class Command(BaseCommand):
             adminUser.save()
         except IntegrityError:
             pass
-
-        with transaction.atomic():
-            self.downloadBooks()
-            self.bulkCreateUsers()
-            self.bulkCreateBookReviews()
 
         try:
             with transaction.atomic():

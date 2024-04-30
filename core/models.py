@@ -7,13 +7,19 @@ from django.urls import reverse
 from django.utils import timezone
 
 
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile', unique=True, db_index=True)
+    favouriteGenres = ArrayField(models.CharField(max_length=8192), blank=True)
+    profilePicture = models.ImageField(upload_to='profile-picture', blank=True, null=True)
+
+
 class Book(models.Model):
     title = models.CharField(max_length=1024)
     authors = ArrayField(models.CharField(max_length=1024), blank=True)
     publisher = models.CharField(max_length=1024, blank=True, null=True)
     publishedDate = models.DateField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    isbn13 = models.CharField(max_length=13)
+    isbn13 = models.CharField(max_length=13, unique=True)
     categories = ArrayField(models.CharField(max_length=2048), blank=True)
     thumbnail = models.URLField(max_length=8192)
     selfLink = models.URLField(max_length=1024)
@@ -23,6 +29,12 @@ class Book(models.Model):
     haveRead = models.ManyToManyField(User, related_name='haveRead')
     averageRating = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     ratingsCount = models.PositiveIntegerField(default=0, blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['isbn13'], name='idx-isbn13'),
+            models.Index(fields=['title'], name='idx-title'),
+        ]
 
     def getAuthors(self):
         return ', '.join(self.authors)
@@ -64,7 +76,14 @@ class BookReview(models.Model):
     dislikes = models.ManyToManyField(User, related_name='bookReviewDislikes')
 
     class Meta:
-        unique_together = ['book', 'creator']
+        indexes = [
+            models.Index(fields=['book'], name='idx-book'),
+            models.Index(fields=['creator'], name='idx-creator'),
+            models.Index(fields=['book', 'creator'], name='idx-book-creator'),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['book', 'creator'], name='unique-book-creator')
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -80,6 +99,9 @@ class Category(models.Model):
 
     class Meta:
         ordering = ('name',)
+        indexes = [
+            models.Index(fields=['name'], name='idx-name'),
+        ]
 
     def __str__(self):
         return self.name

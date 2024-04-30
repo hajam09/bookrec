@@ -6,9 +6,33 @@ from django.db.models.functions import Greatest, Cast
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bookrec.operations import bookOperations
+from bookrec.operations import bookOperations, emailOperations
 from core.models import Book, BookReview
 from core.serializers import BookReviewSerializer, BookSerializerV1, BookReviewSerializerV2
+
+
+class RequestDeleteCodeApiEventVersion1Component(APIView):
+
+    def get(self, request, *args, **kwargs):
+        if self.request.user.is_authenticated:
+            if not self.request.session.session_key:
+                self.request.session.save()
+
+            emailOperations.sendEmailForAccountDeletionCode(self.request, self.request.user)
+            success = True
+            data = {'message': 'Check your email for the code.'}
+            status = HTTPStatus.OK
+        else:
+            success = False
+            data = {'message': 'Login to request a code.'}
+            status = HTTPStatus.UNAUTHORIZED
+
+        response = {
+            'version': '1.0.0',
+            'success': success,
+            'data': data
+        }
+        return Response(response, status=status)
 
 
 class BookReviewActionApiEventVersion1Component(APIView):
@@ -96,7 +120,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         bookReview = BookReview.objects.get(
             id=request.data.get('id'),
             book__isbn13=kwargs.get('isbn13'),
-            creator_id=self.request.user.id
+            creator=self.request.user
         )
         bookReview.comment = request.data.get('comment')
         bookReview.edited = True
@@ -116,7 +140,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         bookReview = BookReview.objects.filter(
             id=request.data.get('id'),
             book__isbn13=kwargs.get('isbn13'),
-            creator_id=self.request.user.id,
+            creator=self.request.user,
         ).first()
 
         if bookReview is not None:
@@ -134,7 +158,7 @@ class UserShelfApiEventVersion1Component(APIView):
         shelf = request.GET.get('shelf')
 
         if shelf == 'ratedAndReviewed':
-            reviews = BookReview.objects.filter(creator__id=self.request.user.id).select_related('book')
+            reviews = BookReview.objects.filter(creator=self.request.user).select_related('book')
             data = BookReviewSerializerV2(reviews, many=True).data
         elif shelf == 'recentlyViewed':
             history = request.session.get('history', [])
