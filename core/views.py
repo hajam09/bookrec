@@ -152,6 +152,11 @@ def passwordUpdateRequest(request, base64, token):
     return render(request, 'core/{}.html'.format(TEMPLATE), context)
 
 
+@login_required
+def settingsView(request):
+    return render(request, 'core/settingsView.html')
+
+
 def indexView(request):
     context = {
         'categories': Category.objects.all(),

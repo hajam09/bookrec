@@ -1,38 +1,64 @@
 from http import HTTPStatus
 
+from django.contrib.auth import authenticate, login
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count, FloatField, Func, F
 from django.db.models.functions import Greatest, Cast
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bookrec.operations import bookOperations, emailOperations
-from core.models import Book, BookReview
-from core.serializers import BookReviewSerializer, BookSerializerV1, BookReviewSerializerV2
+from bookrec.operations import bookOperations, emailOperations, generalOperations
+from core.models import Book, BookReview, Category, Profile
+from core.serializers import (
+    BookReviewSerializer, BookSerializerV1, BookReviewSerializerV2, CategorySerializer, UserAndProfileSerializer
+)
 
 
-class RequestDeleteCodeApiEventVersion1Component(APIView):
+class AccountDeleteCodeApiEventVersion1Component(APIView):
 
     def get(self, request, *args, **kwargs):
+        alerts = []
         if self.request.user.is_authenticated:
             if not self.request.session.session_key:
                 self.request.session.save()
 
             emailOperations.sendEmailForAccountDeletionCode(self.request, self.request.user)
             success = True
-            data = {'message': 'Check your email for the code.'}
+            alerts.append({'alert': 'success', 'message': 'Check your email for the code.'})
             status = HTTPStatus.OK
         else:
             success = False
-            data = {'message': 'Login to request a code.'}
+            alerts.append({'alert': 'danger', 'message': 'Login to request a code.'})
             status = HTTPStatus.UNAUTHORIZED
 
         response = {
             'version': '1.0.0',
             'success': success,
-            'data': data
+            'data': {
+                'alerts': alerts
+            }
         }
         return Response(response, status=status)
+
+    def delete(self, request, *args, **kwargs):
+        alerts = []
+        if self.request.data.get('code') == self.request.session.session_key:
+            generalOperations.redactUserData(self.request.user)
+            alerts.append({'alert': 'success', 'message': 'Account deleted successfully.'})
+            success = True
+        else:
+            alerts.append({'alert': 'danger', 'message': 'Account delete code is incorrect, please try again later.'})
+            success = False
+
+        response = {
+            'version': '1.0.0',
+            'success': success,
+            'data': {
+                'alerts': alerts
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
 
 
 class BookReviewActionApiEventVersion1Component(APIView):
@@ -260,6 +286,111 @@ class BookReviewVotingActionApiEventVersion1Component(APIView):
             'success': True,
             'data': {
                 'review': serializer.data
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
+
+
+class CategoryApiEventVersion1Component(ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+class ProfileApiEventVersion1Component(APIView):
+    def get(self, request, *args, **kwargs):
+        profile = Profile.objects.get(user=self.request.user)
+        serializer = UserAndProfileSerializer(profile)
+        response = {
+            'version': '1.0.0',
+            'success': True,
+            'data': {
+                'profile': serializer.data
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
+
+    def put(self, request, *args, **kwargs):
+        profile = Profile.objects.get(user=self.request.user)
+        profile.user.first_name = self.request.data.get('firstName')
+        profile.user.last_name = self.request.data.get('lastName')
+        profile.user.email = self.request.data.get('email')
+        profile.favouriteGenres = self.request.data.get('genres')
+
+        profile.save()
+        profile.user.save()
+
+        response = {
+            'version': '1.0.0',
+            'success': True,
+            'data': {
+                'alerts': [
+                    {'alert': 'success', 'message': 'Profile update successfully.'}
+                ]
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
+
+
+class UserPasswordUpdateApiEventVersion1Component(APIView):
+
+    def put(self, request, *args, **kwargs):
+        currentPassword = self.request.data.get('currentPassword')
+        newPassword = self.request.data.get('newPassword')
+        repeatNewPassword = self.request.data.get('repeatNewPassword')
+
+        alerts = []
+        if currentPassword and not self.request.user.check_password(currentPassword):
+            alerts.append(
+                {'alert': 'danger', 'message': 'Your current password doesn\'t match the existing one.'}
+            )
+
+        if newPassword and repeatNewPassword:
+            if newPassword != repeatNewPassword:
+                alerts.append(
+                    {'alert': 'danger', 'message': 'Your new password and confirm password does not match.'}
+                )
+
+            if not generalOperations.isPasswordStrong(newPassword):
+                alerts.append(
+                    {'alert': 'danger', 'message': 'Your new password is not strong enough.'}
+                )
+
+        if len(alerts) == 0:
+            self.request.user.set_password(newPassword)
+            self.request.user.save()
+
+            user = authenticate(self.request, username=self.request.user.username, password=newPassword)
+            if user:
+                login(self.request, user)
+                alerts.append(
+                    {'alert': 'success', 'message': 'Password updated successfully.'}
+                )
+            else:
+                alerts.append(
+                    {'alert': 'warning', 'message': 'Something has occurred. Please try logging into the system again.'}
+                )
+
+        response = {
+            'version': '1.0.0',
+            'success': True,
+            'data': {
+                'alerts': alerts
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
+
+
+class RequestCopyOfDataApiEventVersion1Component(APIView):
+
+    def get(self, request, *args, **kwargs):
+        alerts = [
+            {'alert': 'success', 'message': 'A copy of your data will be sent to your email.'}
+        ]
+        response = {
+            'version': '1.0.0',
+            'success': True,
+            'data': {
+                'alerts': alerts
             }
         }
         return Response(response, status=HTTPStatus.OK)

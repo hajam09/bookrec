@@ -21,15 +21,31 @@ coreUrls = [
     path('book-list', views.bookListView, name='book-list-view'),
     path('book/<int:isbn13>/', views.bookDetailView, name='book-detail-view'),
     path('user-shelf/', views.userShelfView, name='user-shelf-view'),
+    path('settings/', views.settingsView, name='settings-view'),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('', include(router.urls)),
 ]
 
 accountApiUrls = [
     path(
-        'api/v1/requestDeleteCodeApiEventVersion1Component',
-        RequestDeleteCodeApiEventVersion1Component.as_view(),
-        name='requestDeleteCodeApiEventVersion1Component'
+        'api/v1/accountDeleteCodeApiEventVersion1Component',
+        AccountDeleteCodeApiEventVersion1Component.as_view(),
+        name='accountDeleteCodeApiEventVersion1Component'
+    ),
+    path(
+        'api/v1/profileApiEventVersion1Component',
+        ProfileApiEventVersion1Component.as_view(),
+        name='profileApiEventVersion1Component'
+    ),
+    path(
+        'api/v1/userPasswordUpdateApiEventVersion1Component',
+        UserPasswordUpdateApiEventVersion1Component.as_view(),
+        name='userPasswordUpdateApiEventVersion1Component'
+    ),
+    path(
+        'api/v1/requestCopyOfDataApiEventVersion1Component',
+        RequestCopyOfDataApiEventVersion1Component.as_view(),
+        name='requestCopyOfDataApiEventVersion1Component'
     )
 ]
 
@@ -53,6 +69,11 @@ coreApiUrls = [
         'api/v1/userReadingInfoApiEventVersion1Component/<slug:isbn13>/',
         UserReadingInfoApiEventVersion1Component.as_view(),
         name='userReadingInfoApiEventVersion1Component'
+    ),
+    path(
+        'api/v1/categoryApiEventVersion1Component',
+        CategoryApiEventVersion1Component.as_view(),
+        name='categoryApiEventVersion1Component'
     )
 ]
 

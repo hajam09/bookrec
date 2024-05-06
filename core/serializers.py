@@ -1,7 +1,7 @@
 from django.utils.timesince import timesince
 from rest_framework import serializers
 
-from core.models import Book, BookReview
+from core.models import Book, BookReview, Category, Profile
 
 
 class BookSerializerV1(serializers.ModelSerializer):
@@ -105,4 +105,29 @@ class BookReviewSerializerV2(serializers.ModelSerializer):
             'title',
             'categories',
             'comment',
+        ]
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = [
+            'id',
+            'name'
+        ]
+
+
+class UserAndProfileSerializer(serializers.ModelSerializer):
+    firstName = serializers.CharField(source='user.first_name', read_only=True)
+    lastName = serializers.CharField(source='user.last_name', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = [
+            'firstName',
+            'lastName',
+            'email',
+            'favouriteGenres',
+            'profilePicture'
         ]

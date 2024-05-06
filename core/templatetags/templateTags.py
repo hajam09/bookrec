@@ -17,6 +17,7 @@ def navigationPanel(request):
             [
                 linkItem('Account', '', None, [
                     linkItem('Shelf', reverse('core:user-shelf-view'), Icon('', 'fas fa-book', '15')),
+                    linkItem('Settings', reverse('core:settings-view'), Icon('', 'fa fa-gear', '15')),
                     None,
                     linkItem('Logout', reverse('core:logout-view'), Icon('', 'fas fa-sign-out-alt', '15')),
                 ]),

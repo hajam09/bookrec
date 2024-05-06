@@ -36,17 +36,8 @@ class Book(models.Model):
             models.Index(fields=['title'], name='idx-title'),
         ]
 
-    def getAuthors(self):
-        return ', '.join(self.authors)
-
-    def getCategories(self):
-        return ', '.join(self.categories)
-
     def getUrl(self):
         return reverse('core:book-detail-view', kwargs={'isbn13': self.isbn13})
-
-    def getAverageRating(self):
-        return str(self.averageRating)
 
     def increaseAverageRatingAndRatingsCount(self, newRating):
         totalRatings = self.averageRating * self.ratingsCount + newRating
@@ -95,13 +86,10 @@ class BookReview(models.Model):
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=1024)
+    name = models.CharField(max_length=1024, unique=True, db_index=True)
 
     class Meta:
         ordering = ('name',)
-        indexes = [
-            models.Index(fields=['name'], name='idx-name'),
-        ]
 
     def __str__(self):
         return self.name

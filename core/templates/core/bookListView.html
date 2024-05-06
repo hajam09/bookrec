@@ -26,7 +26,7 @@
                     </a>
                     <hr/>
                     <h5 class='text-uppercase'>
-                        <small class='text-muted '>Authors: {{ book.getAuthors }}</small>
+                        <small class='text-muted '>Authors: {{ book.authors|join:', ' }}</small>
                     </h5>
                     <h5 class='text-uppercase'>
                         <small class='text-muted'>Publisher: {{ book.publisher }}</small>
@@ -34,7 +34,7 @@
                         <small class='text-muted'>Published Date: {{ book.publishedDate }}</small>
                     </h5>
                     <h5 class='text-uppercase'>
-                        <small class='text-muted'>Categories: {{ book.getCategories }}</small>
+                        <small class='text-muted'>Categories: {{ book.categories|join:', ' }}</small>
                     </h5>
                 </div>
             </div>
