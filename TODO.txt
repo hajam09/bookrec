@@ -1,0 +1,2 @@
+- On book page, validate the book reviews.
+- For each star rating, fill the star using percentage.

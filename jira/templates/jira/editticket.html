@@ -1,0 +1,295 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block content %}
+<style type="text/css">
+	@media (min-width: 1200px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+	}
+
+	@media (min-width: 972px) and (max-width: 1200px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+	}
+
+	@media (min-width: 700px) and (max-width: 959px) {
+		.container {
+			width: 1600px;
+		}
+		.wrapper {
+			width: 90%;
+		}
+		
+	}
+</style>
+<div class="wrapper" style="margin: auto;overflow-x: hidden; color: black;">
+	<form method="post" enctype="multipart/form-data">
+		{% csrf_token %}
+		<br>
+		<div class="row gutters-sm">
+			<input type="text" name="update_ticket_data" hidden>
+			<div class="col-md-12">
+				<a href="{% url 'jira:ticketpage' ticket.url %}">{{ticket.project}} / {{ticket.url}}</a>
+				<div class="col-xs-12" style="height:10px;"></div>
+				<h3><input type="text" id="summary" name="summary" class="form-control" style="width:100%; font-size: 1.75rem;" value="{{ticket.summary}}"></h3>
+				<input type="text" name="update_ticket_data" hidden>
+				<label class="btn btn-secondary" for="ticket-attachment-files">
+				<i class="fa fa-paperclip" aria-hidden="true"></i>&nbsp;&nbsp;
+				<input id="ticket-attachment-files" name="ticket-attachment-files" type="file" style="display:none" multiple> Attach files
+				</label>
+				<label class="btn btn-secondary">
+				<input class="btn btn-primary" type="submit" value="Submit" style="display:none"> Save
+				</label>
+			</div>
+			<div style="height:130px;"></div>
+			<div class="col-md-12">
+				<div class="row">
+					<div class="col-12 col-md-8">
+						<a data-toggle="collapse" href="#details" role="button" aria-expanded="false" aria-controls="details"><i class="fas fa-chevron-circle-down"></i> Details</a>
+						<div class="collapse" id="details">
+							<div class="card card-body">
+								<div class="row">
+									<div class="col-sm">
+										<div class="row">
+											<div class="col-6">Type:</div>
+											<div class="col-6">
+												<p>
+													<select class="form-control" name="issuetype" id="issuetype">
+														<option value="Bug">Bug</option>
+														<option value="Improvement">Improvement</option>
+														<option value="Story">Story</option>
+														<option value="Task">Task</option>
+														<option value="Test">Test</option>
+														<option value="Epic">Epic</option>
+													</select>
+												</p>
+											</div>
+										</div>
+										<div class="row">
+											<div class="col-6">Priority:</div>
+											<div class="col-6">
+												<p>
+													<select class="form-control" name="priority" id="priority">
+														<option value="Low">Low</option>
+														<option value="Medium">Medium</option>
+														<option value="High">High</option>
+														<option value="None">None</option>
+													</select>
+												</p>
+											</div>
+										</div>
+										<div class="row">
+											<div class="col-6">Story Points:</div>
+											<div class="col-6">
+												<p>
+													<input class="form-control" type="text" name="points" value="{{ticket.points}}">
+												</p>
+											</div>
+										</div>
+									</div>
+									<div class="col-sm">
+										<div class="row">
+											<div class="col-6">Status:</div>
+											<div class="col-6">
+												<p>
+													<select class="form-control" name="status" id="status">
+														<option value="Open">Open</option>
+														<option value="Progress">Progress</option>
+														<option value="Done">Done</option>
+														<option value="Cancelled">Cancelled</option>
+														<option value="None">None</option>
+													</select>
+												</p>
+											</div>
+										</div>
+										{% if not ticket.sprint %}
+										<div class="row" id="choose_sprint" hidden>
+											<div class="col-6">Sprint:</div>
+											<div class="col-6">
+												<p>
+													<select class="form-control" name="sprint" id="sprint">
+														{% for sprints in incomplete_sprints %}
+														<option value="{{sprints.url}}" style="text-transform: capitalize;">{{sprints.url}}</option>
+														{% endfor %}
+														<option value="None" style="text-transform: capitalize;">None</option>
+													</select>
+												</p>
+											</div>
+										</div>
+										{% else %}
+										<div class="row" id="choose_sprint">
+											<div class="col-6">Sprint:</div>
+											<div class="col-6">
+												<p>
+													<a href="{% url 'jira:sprintboard' ticket.sprint.url %}" style="text-transform: capitalize;">{{ticket.sprint.url}}</a>
+												</p>
+											</div>
+										</div>
+										{% endif %}
+										<div class="row">
+											<div class="col-6">Resolution:</div>
+											<div class="col-6">
+												<p>
+													{% if ticket.status == "Done" %}
+													Resolved
+													{% else %}
+													Unresolved
+													{% endif %}
+												</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-xs-12" style="height:30px;"></div>
+						<a data-toggle="collapse" href="#description" role="button" aria-expanded="false" aria-controls="description"><i class="fas fa-chevron-circle-down"></i> Description</a>
+						<div class="collapse" id="description">
+							<div class="card card-body">
+								<textarea class="form-control border p-4" id="description" name="description" rows="4">{{ ticket.description }}</textarea>
+							</div>
+						</div>
+						<div class="col-xs-12" style="height:30px;"></div>
+						<a data-toggle="collapse" href="#attachments" role="button" aria-expanded="false" aria-controls="attachments"><i class="fas fa-chevron-circle-down"></i> Attachments</a>
+						<div class="collapse" id="attachments">
+							<div class="card card-body">
+								<div class="timeline-body" id="ticket_image_carousel">
+									{% for image in ticket_images %}
+									<img src="{{image.image.url}}" alt="..." width="150", height="150" onclick="image_modal_popup('{{image.image.url}}', '{{image.pk}}');" data-toggle="modal" data-target=".bd-example-modal-lg">
+									{% endfor %}
+								</div>
+							</div>
+							<div class="modal fade bd-example-modal-lg" id="ticket_image_modal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+								<div class="modal-dialog modal-lg">
+									<div class="modal-content">
+										<img id="carousel_current_image" height="800" width="800">
+										<input type="text" name="current_image_pk" id="current_image_pk" hidden>
+										<button type="button" class="btn btn-danger" onclick="delete_image();">Danger</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="col">
+						<a data-toggle="collapse" href="#people" role="button" aria-expanded="false" aria-controls="people"><i class="fas fa-chevron-circle-down"></i> People</a>
+						<div class="collapse" id="people">
+							<div class="card card-body">
+								<div class="row">
+									<div class="col-12 col-md-auto">
+										<div class="row">
+											<div class="col-md-auto">Assignee:</div>
+											<div class="col-md-auto">
+												<p>
+													<select class="form-control" name="assignee" id="assignee">
+														{% for users in superusers %}
+														{% if users.get_full_name %}
+														<option value="{{users.pk}}">{{users.get_full_name}}</option>
+														{% else %}
+														<option value="{{users.pk}}">{{users}}</option>
+														{% endif %}
+														{% endfor %}
+													</select>
+												</p>
+											</div>
+										</div>
+										<div class="row">
+											<div class="col-md-auto">Reporter:</div>
+											<div class="col-md-auto">
+												<p>
+													<select class="form-control" name="reporter" id="reporter">
+														{% for users in superusers %}
+														{% if users.get_full_name %}
+														<option value="{{users.pk}}">{{users.get_full_name}}</option>
+														{% else %}
+														<option value="{{users.pk}}">{{users}}</option>
+														{% endif %}
+														{% endfor %}
+													</select>
+												</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-xs-12" style="height:30px;"></div>
+						<a data-toggle="collapse" href="#dates" role="button" aria-expanded="false" aria-controls="dates"><i class="fas fa-chevron-circle-down"></i> Dates</a>
+						<div class="collapse" id="dates">
+							<div class="card card-body">
+								<div class="row">
+									<div class="col-6 col-md-auto">
+										<p>Created:</p>
+										<p>Updated:</p>
+									</div>
+									<div class="col-6 col-md-auto">
+										<p>{{ticket.created_date}}</p>
+										<p>{{ticket.modified_date}}</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</form>
+</div>
+<script type="text/javascript">
+	$('#details,#description,#attachments,#people,#dates').collapse({
+		toggle: true
+	})
+
+	function image_modal_popup(image_url, image_pk) {
+		$("#carousel_current_image").attr("src",image_url);
+		$("#current_image_pk").val(image_pk);
+	}
+
+	function delete_image() {
+		var image_object_pk = $("#current_image_pk").val();
+		$.ajax({
+			data: {
+				'functionality': 'delete_ticket_image',
+				'image_object_pk': image_object_pk,
+			},
+			dataType: 'json',
+			success: function (response) {
+				if (response.status_code == 200) {
+					var new_ticket_images = eval(response.new_ticket_images);
+					$('#ticket_image_modal').modal('hide');
+					$('#ticket_image_carousel').empty();
+
+					for (i = 0; i < new_ticket_images.length; i++) {
+						var pic_pk = new_ticket_images[i].pk;
+						var pic_url = "/media/"+new_ticket_images[i].fields.image;
+						var new_pic_carousel = `<img src="`+pic_url+`" alt="..." width="150" ,="" height="150" onclick="image_modal_popup('`+pic_url+`', '`+pic_pk+`');" data-toggle="modal" data-target=".bd-example-modal-lg">&nbsp;`;
+						$( "#ticket_image_carousel" ).append( new_pic_carousel );
+					}
+				}
+			}
+		});
+	}
+
+	$('#status').change(function() {
+		var selected_status = $(this).val();
+		if (selected_status != "None") {
+			$('#choose_sprint').removeAttr('hidden');
+		} else {
+			$('#choose_sprint').prop('hidden', true);
+		}
+	});
+
+	$("select#issuetype option[value='{{ticket.issue_type}}']").attr("selected","selected");
+	$("select#priority option[value='{{ticket.priority}}']").attr("selected","selected");
+	$("select#status option[value='{{ticket.status}}']").attr("selected","selected");
+	$("select#assignee option[value='{{ticket.assignee.pk}}']").attr("selected","selected");
+	$("select#reporter option[value='{{ticket.reporter.pk}}']").attr("selected","selected");
+</script>
+{% endblock %}
