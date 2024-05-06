@@ -1,0 +1,48 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+    <div class='container mt-5'>
+        <form method='GET' action='{{ request.path }}'>
+            <div class='row'>
+                <div class='col'>
+                    <input type='text' id='query' name='query' class='form-control col' value='{{ request.GET.query }}'
+                           placeholder='Search for a book...'/>
+                </div>
+                <div class='col-auto'>
+                    <input type='submit' class='btn btn-primary' value='Search'/>
+                </div>
+            </div>
+        </form>
+        <br>
+        {% for book in books %}
+            <div class='row mt-3'
+                 style='background-color: #fff; border-radius: 10px; padding: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);'>
+                <div class='col-sm-3'>
+                    <img class='rounded' alt='' src='{{ book.thumbnail }}' style='height: 200px; width: 160px'/>
+                </div>
+                <div class='col-sm-9'>
+                    <a class='w-inline-block' href='{{ book.getUrl }}'>
+                        <p class='h4'>{{ book.title }}</p>
+                    </a>
+                    <hr/>
+                    <h5 class='text-uppercase'>
+                        <small class='text-muted '>Authors: {{ book.authors|join:', ' }}</small>
+                    </h5>
+                    <h5 class='text-uppercase'>
+                        <small class='text-muted'>Publisher: {{ book.publisher }}</small>
+                        <small class='text-muted'>|</small>
+                        <small class='text-muted'>Published Date: {{ book.publishedDate }}</small>
+                    </h5>
+                    <h5 class='text-uppercase'>
+                        <small class='text-muted'>Categories: {{ book.categories|join:', ' }}</small>
+                    </h5>
+                </div>
+            </div>
+        {% empty %}
+            <div class='alert alert-danger text-center' role='alert'>
+                Sorry, we couldn't find any results matching {{ request.GET.query }}
+            </div>
+        {% endfor %}
+        <br>
+    </div>
+{% endblock %}

@@ -1,0 +1,733 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+    <style type='text/css'>
+        button {
+            font-family: 'TitilliumText22LRegular', Arial, sans-serif;
+            min-width: 140px;
+        }
+
+        .swiper-slide {
+            text-align: center;
+            font-size: 18px;
+            background: #fff;
+
+            /* Center slide text vertically */
+            display: -webkit-box;
+            display: -ms-flexbox;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-pack: center;
+            -ms-flex-pack: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            -webkit-box-align: center;
+            -ms-flex-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+        }
+
+        .total-like {
+            border: 1px solid;
+            border-radius: 50px;
+            display: inline-block;
+            font-weight: 500;
+            height: 34px;
+            line-height: 33px;
+            padding: 0 13px;
+            vertical-align: top;
+        }
+
+        .text-black {
+            color: #000000;
+        }
+
+        .reviews-members .media .mr-3 {
+            width: 56px;
+            height: 56px;
+            object-fit: cover;
+        }
+
+        .rounded-pill {
+            border-radius: 50rem !important;
+        }
+
+        .total-like {
+            border: 1px solid;
+            border-radius: 50px;
+            display: inline-block;
+            font-weight: 500;
+            height: 34px;
+            line-height: 33px;
+            padding: 0 13px;
+            vertical-align: top;
+        }
+    </style>
+    <div id='div-id-book-container'></div>
+
+    <script type='text/babel'>
+
+        class ShelfButtons extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    isInFavouriteRead: false,
+                    isInReadingNow: false,
+                    isInToRead: false,
+                    isInHasRead: false
+                }
+
+                this.fetchUserBookDetail();
+            }
+
+            fetchUserBookDetail = () => {
+                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                isInFavouriteRead: response.data.isInFavouriteRead,
+                                isInReadingNow: response.data.isInReadingNow,
+                                isInToRead: response.data.isInToRead,
+                                isInHasRead: response.data.isInHasRead
+                            });
+                        }
+                    })
+            }
+
+            updateUserBookDetail = (field, action) => {
+                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'field': field, 'action': action})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.fetchUserBookDetail();
+                        }
+                    })
+            }
+
+            render() {
+                return (
+                    <div>
+                        {
+                            this.state.isInFavouriteRead ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('favouriteRead', 'remove')}>Remove from
+                                    favourites</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('favouriteRead', 'add')}>Add to
+                                    favourites</button>
+                        }
+                        {
+                            this.state.isInReadingNow ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('readingNow', 'remove')}>Not reading
+                                    now</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('readingNow', 'add')}>I am reading
+                                    it
+                                    now</button>
+                        }
+                        {
+                            this.state.isInToRead ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('toRead', 'remove')}>Remove from
+                                    to
+                                    read</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('toRead', 'add')}>I need to
+                                    read
+                                    this</button>
+                        }
+                        {
+                            this.state.isInHasRead ?
+                                <button type='button' className='btn btn-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('haveRead', 'remove')}>I haven't
+                                    read
+                                    this</button> :
+                                <button type='button' className='btn btn-outline-dark btn-sm btn-block'
+                                        onClick={() => this.updateUserBookDetail('haveRead', 'add')}>I have read
+                                    this</button>
+                        }
+                    </div>
+                );
+            }
+        }
+
+        class StarRatingComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                const ratingRounded = Math.round(this.props.rating * 2) / 2;
+                const isRatingAValueOfHalf = !Number.isInteger(ratingRounded);
+                this.state = {
+                    fullStarView: isRatingAValueOfHalf ? ratingRounded - 0.5 : ratingRounded,
+                    halfStarView: isRatingAValueOfHalf ? 1 : 0,
+                    emptyStarView: isRatingAValueOfHalf ? 5 - ratingRounded - 0.5 : 5 - ratingRounded
+                }
+            }
+
+            render() {
+                return (
+                    <span>
+                        {[...Array(this.state.fullStarView).keys()].map(() => <i className='fas fa-star'></i>)}
+                        {[...Array(this.state.halfStarView).keys()].map(() => <i className='fas fa-star-half-alt'></i>)}
+                        {[...Array(this.state.emptyStarView).keys()].map(() => <i className='far fa-star'></i>)}
+                    </span>
+                )
+            }
+        }
+
+        class BookComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                let authors = [];
+                let genres = [];
+
+                {% for authors in book.authors %}
+                    authors.push('{{ authors }}')
+                {% endfor %}
+
+                {% for genre in book.categories %}
+                    genres.push('{{ genre }}')
+                {% endfor %}
+
+                this.state = {
+                    isAuthenticated: '{{ user.is_authenticated }}' === 'True',
+                    authors: authors,
+                    description: '{{ book.description }}',
+                    descriptionExpanded: false,
+                    genres: genres,
+                }
+            }
+
+            showMoreOrLessDescription = () => {
+                this.setState({descriptionExpanded: !this.state.descriptionExpanded});
+            }
+
+            render() {
+                return (
+                    <div className='card'>
+                        <div className='card-body'>
+                            <div className='row'>
+                                <div className='col-sm-4 col-md-auto'>
+                                    <img src='{{ book.thumbnail }}' width='200px' alt='No Image'></img>
+                                    <div className='w-75 p-3'></div>
+                                    {this.state.isAuthenticated ? <ShelfButtons/> : null}
+
+                                </div>
+                                <div className='col-sm-8'>
+                                    <h3 className='card-title'>{{ book.title }}</h3>
+                                    <p className='card-text'>by &nbsp;
+                                        {this.state.authors.map((author, index) =>
+                                            <span>
+                                                <a href={'https://www.google.com/search?q=' + author}
+                                                   target='_blank'>{author}</a>
+                                                {index !== this.state.authors.length - 1 ? ', ' : null}
+                                            </span>)}
+                                    </p>
+                                    <hr className='my-4'></hr>
+                                    <p className='text-justify' id='p_book_description'>
+                                        {this.state.descriptionExpanded ? this.state.description : this.state.description.substring(0, 500)}
+                                        <button type='button' className='btn btn-link'
+                                                onClick={this.showMoreOrLessDescription}>
+                                            {this.state.descriptionExpanded ? 'Show less' : 'Show more'}
+                                        </button>
+                                    </p>
+                                    <hr className='my-4'></hr>
+                                    <dl className='row'>
+                                        <dt className='col-sm-3'>Publisher</dt>
+                                        <dd className='col-sm-9'>{{ book.publisher }}</dd>
+                                        <dt className='col-sm-3'>Genre</dt>
+                                        <dd className='col-sm-9'>
+
+                                            {this.state.genres.map((genre, index) =>
+                                                <span> {genre}
+                                                    {index !== this.state.genres.length - 1 ? ', ' : null}
+                                            </span>)}
+                                        </dd>
+                                        <dt className='col-sm-3'>Published Date</dt>
+                                        <dd className='col-sm-9'>{{ book.publishedDate }}</dd>
+                                        <dt className='col-sm-3'>Rating</dt>
+                                        <dd className='col-sm-9'><StarRatingComponent
+                                            rating={parseFloat('{{ book.averageRating }}')}/> ({{ book.ratingsCount }})
+                                        </dd>
+                                    </dl>
+                                    <hr className='my-4'></hr>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class SimilarBooksComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                let bookList = [];
+                {% for books in similarBooks %}
+                    bookList.push({
+                        title: '{{ books.title }}',
+                        thumbnail: '{{ books.thumbnail }}',
+                        url: '{{ books.getUrl }}',
+                    });
+                {% endfor %}
+
+                this.state = {
+                    books: bookList
+                }
+            }
+
+            componentDidMount = () => {
+                new Sliderm('#similarBooks-slider', {
+                    arrow: true,
+                    pagination: true,
+                    grouping: true,
+                    loop: true,
+                    preview: false,
+                    columns: 6,
+                    duration: 1000,
+                    spacing: 10,
+                    align: 'center',
+                    breakpoint: true,
+                    autoplay: true,
+                });
+            }
+
+            render() {
+                const fontSize = {fontWeight: 'bold', fontSize: '20px'};
+                const bookCursor = {cursor: 'pointer'};
+                const bookThumbnailSize = {height: '200px', width: '200px'};
+                return (
+                    <span>
+                        <p style={fontSize} className='text-left'>Similar Book's...</p>
+                        <div id='similarBooks-slider' className='sliderm'>
+                            <div className='sliderm__slider'>
+                                <div className='sliderm__slides'>
+                                    {this.state.books.map((book) =>
+                                        <div className='sliderm__slide'>
+                                            <a style={bookCursor} href={book.url}>
+                                                <p className='lead img-responsive'>
+                                                    <img src={'https://dummyimage.com/200x200'}
+                                                         style={bookThumbnailSize} alt='No Image'></img>
+                                                    <p className='text-center'>{
+                                                        book.title.length > 20 ? book.title.slice(0, 20 - 1) + '...' : book.title
+                                                    }</p></p>
+                                            </a>
+                                        </div>)
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </span>
+                )
+            }
+        }
+
+        class ReviewElementComponent extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    editMode: false,
+                }
+            }
+
+            voteComment = (id, direction) => {
+                fetch('{% url 'core:bookReviewVotingActionApiEventVersion1Component' %}', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'id': id, 'direction': direction})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.props.updateComment(response.data.review);
+                        }
+                    })
+            }
+
+            editComment = () => {
+                this.setState({
+                    editMode: !this.state.editMode
+                });
+            }
+            cancelUpdateComment = () => {
+                this.setState({
+                    editMode: false
+                });
+            }
+
+            updateReviewComment = () => {
+                if (this.refs.refCommentTextAreaUpdate.value.trim().length !== 0) {
+                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Encoding': 'gzip',
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        dataType: 'json',
+                        body: JSON.stringify({
+                            'id': this.props.review.id,
+                            'comment': this.refs.refCommentTextAreaUpdate.value.trim()
+                        })
+                    }).then((response) => response.json())
+                        .then((response) => {
+                            if (response.success) {
+                                this.cancelUpdateComment();
+                                this.props.updateComment(response.data.review);
+                            }
+                        })
+                }
+            }
+
+            deleteComment = () => {
+                if (confirm('Are you sure?')) {
+                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Encoding': 'gzip',
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        dataType: 'json',
+                        body: JSON.stringify({'id': this.props.review.id})
+                    }).then((response) => response.json())
+                        .then((response) => {
+                            if (response.success) {
+                                this.props.deleteComment(this.props.review.id);
+                            }
+                        })
+
+                } else {
+
+                }
+            }
+
+            render() {
+                let upVoting = {cursor: 'pointer', color: this.props.review.userVote.upVoted ? 'blue' : 'black'}
+                let downVoting = {cursor: 'pointer', color: this.props.review.userVote.downVoted ? 'red' : 'black'}
+                let editAndDeleteButton = {fontSize: '13px', cursor: 'pointer'};
+                return (
+                    <div className='container'>
+                        <div className='row m-0'>
+                            <img src='https://cdn3.iconfinder.com/data/icons/avatars-round-flat/33/avat-01-512.png'
+                                 width='25' height='25' alt='...'/>
+                            <div className='flex-grow-1 pl-2'>
+                                <span className='mb-0'>
+                                    <span className='text-capitalize mb-0'>{this.props.review.name}</span>
+                                    &nbsp;
+                                    <span className='small text-secondary m-0 mt-1'>
+                                        {this.props.review.createdDateTime.humanize} ago {this.props.review.edited ? '(edited)' : null}
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                        <p className='my-2'>
+                            {this.state.editMode ? <textarea className='form-control' rows={5} required={true}
+                                                             defaultValue={this.props.review.comment}
+                                                             ref='refCommentTextAreaUpdate'
+                                                             id='id-textarea-CommentTextArea-update'></textarea> : this.props.review.comment.split('\n').map((s) =>
+                                <p>{s}</p>)}
+                            {this.state.editMode ? <a href onClick={this.cancelUpdateComment}
+                                                      style={editAndDeleteButton}>Cancel</a> : null}
+                            &nbsp;
+                            {this.state.editMode ?
+                                <a href onClick={this.updateReviewComment}
+                                   style={editAndDeleteButton}>Update</a> : null}
+                        </p>
+                        <StarRatingComponent rating={this.props.review.rating}/>
+                        <div className='d-flex flex-row align-items-center voting-icons'>
+                            <i className='fa fa-sort-up fa-2x mt-3' style={upVoting}
+                               onClick={() => this.voteComment(this.props.review.id, 'UP')}></i>
+                            <span className='ml-2'>{this.props.review.netVote}</span>
+                            &nbsp;
+                            <i className='fa fa-sort-down fa-2x mb-3' style={downVoting}
+                               onClick={() => this.voteComment(this.props.review.id, 'DOWN')}></i>
+                        </div>
+                        {this.props.review.canEdit && !this.state.editMode ?
+                            <a href onClick={this.editComment} style={editAndDeleteButton}>Edit</a> : null}
+                        &nbsp;
+                        {this.props.review.canEdit && !this.state.editMode ?
+                            <a href onClick={this.deleteComment} style={editAndDeleteButton}>Delete</a> : null}
+                        <hr></hr>
+                    </div>
+                );
+            }
+        }
+
+        class Star {
+            constructor(id, starType) {
+                this.id = id;
+                this.starType = starType;
+
+            }
+        }
+
+        class CommentComponent extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this.state = {
+                    submitButtonDisabled: true,
+                    commentValue: '',
+                    reviews: [],
+                    page: 1,
+                    hasMore: false,
+                    selectedStar: [
+                        new Star(1, 'empty'),
+                        new Star(2, 'empty'),
+                        new Star(3, 'empty'),
+                        new Star(4, 'empty'),
+                        new Star(5, 'empty')
+                    ],
+                }
+
+                this.updateComment = this.updateComment.bind(this);
+                this.deleteComment = this.deleteComment.bind(this);
+            }
+
+            componentDidMount = () => {
+                this.fetchBookComment();
+            }
+
+            updateComment = (newComment) => {
+                let reviews = this.state.reviews;
+                const lookUpReviewIndex = reviews.findIndex(review => review.id === newComment.id);
+                reviews[lookUpReviewIndex] = newComment;
+                this.setState({
+                    reviews: reviews
+                });
+            }
+
+            deleteComment = (id) => {
+                let reviews = this.state.reviews;
+                let newReviews = reviews.filter(item => item.id !== id);
+                this.setState({
+                    reviews: newReviews
+                });
+            }
+
+            fetchBookComment = () => {
+                const sortCommentBy = document.getElementById('review-sort-by').value
+                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}' + '?sort-by=' + sortCommentBy + '&page=' + this.state.page, {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                reviews: this.state.reviews.concat(response.data.reviews),
+                                hasMore: response.data.hasMore
+                            });
+                        }
+                    })
+            }
+
+            submitBookComment = () => {
+                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({
+                        'comment': this.state.commentValue,
+                        'rating': this.state.selectedStar.filter(star => star.starType === 'fill').length,
+                    })
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            document.getElementById('id-textarea-CommentTextArea').value = '';
+                            let removedReview = this.state.reviews.filter(item => item.id !== response.data.review.id);
+                            removedReview.unshift(response.data.review);
+                            this.setState({
+                                reviews: removedReview,
+                                submitButtonDisabled: true,
+                                commentValue: '',
+                                selectedStar: [
+                                    new Star(1, 'empty'),
+                                    new Star(2, 'empty'),
+                                    new Star(3, 'empty'),
+                                    new Star(4, 'empty'),
+                                    new Star(5, 'empty')
+                                ]
+                            });
+                        }
+                    })
+            }
+
+            bookCommentBoxListener = () => {
+                this.setState({
+                    commentValue: this.refs.refCommentTextArea.value.trim()
+                });
+                this.enableOrDisableSubmitButton();
+            }
+
+            loadMoreComments = () => {
+                this.setState({
+                    page: this.state.page + 1
+                }, () => {
+                    this.fetchBookComment();
+                })
+            }
+
+            sortByDropdownChangedEvent = () => {
+                this.setState({
+                    reviews: [],
+                    page: 1,
+                }, () => {
+                    this.fetchBookComment();
+                })
+            }
+
+            updateStarRating = (value) => {
+                this.setState(prevState => ({
+                    selectedStar: prevState.selectedStar.map(s => ({
+                        ...s,
+                        starType: s.id <= value ? 'fill' : 'empty'
+                    }))
+                }), this.enableOrDisableSubmitButton);
+            }
+
+            enableOrDisableSubmitButton = () => {
+                const starIsSelected = this.state.selectedStar.some(star => star.starType === 'fill');
+                const commentIsEmpty = this.refs.refCommentTextArea.value.trim().length === 0;
+                let submitButtonDisabled = !(starIsSelected && !commentIsEmpty);
+                this.setState({
+                    submitButtonDisabled: submitButtonDisabled
+                });
+            }
+
+            render() {
+                const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
+                const reviewDropdownStyle = {width: 'auto'};
+                return (
+                    <div className='row h-100 align-items-center'>
+                        <div className='col-xl-12 col-lg-12 col-md-12 col-sm-12 mx-auto form p-4'>
+                            <div className='row justify-content-md-center'>
+                                <div className='col-sm-12'>
+                                    <div className='card'>
+                                        <div className='bg-white rounded shadow-sm p-4'>
+                                            <p style={headerStyle}>Leave Comment</p>
+                                            <div className='form-group'>
+                                                <textarea className='form-control' rows={5} required={true}
+                                                          id='id-textarea-CommentTextArea'
+                                                          defaultValue={this.state.commentValue}
+                                                          ref='refCommentTextArea'
+                                                          onInput={this.bookCommentBoxListener}></textarea>
+                                            </div>
+                                            <div className='form-group'>
+                                                <div id='star-rating'>
+                                                    {
+                                                        this.state.selectedStar.map((star) => {
+                                                            const starClass = star.starType === 'empty' ? 'far fa-star' : 'fas fa-star';
+                                                            return (
+                                                                <span className='star'
+                                                                      onClick={() => this.updateStarRating(star.id)}
+                                                                      data-value={star.id}>
+                                                                    <i className={starClass}></i>
+                                                                </span>
+                                                            );
+                                                        })
+                                                    }
+                                                </div>
+                                                <p><small><em>
+                                                    Note: If you have an existing comment, it will be updated rather
+                                                    than a new comment.
+                                                </em></small></p>
+                                                <button className='btn btn-primary btn-sm' type='submit'
+                                                        id='comment-submit-button' onClick={this.submitBookComment}
+                                                        disabled={this.state.submitButtonDisabled}> Submit Comment
+                                                </button>
+                                            </div>
+
+                                        </div>
+                                        <hr></hr>
+
+
+                                        <div className='bg-white rounded shadow-sm p-4 mb-5'>
+                                            <div className='row'>
+                                                <div className='col'><p style={headerStyle}>Reviews</p></div>
+                                                <div className='col'>
+                                                    <select className='form-control float-right' name='review-sort-by'
+                                                            id='review-sort-by'
+                                                            onChange={this.sortByDropdownChangedEvent}
+                                                            style={reviewDropdownStyle}>
+                                                        <option value='top'>Top</option>
+                                                        <option value='bottom'>Bottom</option>
+                                                        <option value='new'>New</option>
+                                                        <option value='old'>Old</option>
+                                                        <option value='controversial'>Controversial</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className='row'>
+                                                {this.state.reviews.map((item) => <ReviewElementComponent key={item.id}
+                                                                                                          updateComment={this.updateComment}
+                                                                                                          deleteComment={this.deleteComment}
+                                                                                                          review={item}/>)}
+                                            </div>
+
+                                            {this.state.hasMore ? <button type='button' className='btn btn-info btn-sm'
+                                                                          onClick={this.loadMoreComments}>Load
+                                                more</button> : null}
+                                        </div>
+
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        class BaseComponent extends React.Component {
+            constructor(props) {
+                super(props);
+            }
+
+            render() {
+                return (
+                    <div className='container'>
+                        <div className='w-75 p-4'></div>
+                        <BookComponent/>
+                        <div className='w-75 p-4'></div>
+                        <SimilarBooksComponent/>
+                        <div className='w-75 p-4'></div>
+                        <CommentComponent/>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<BaseComponent/>, document.getElementById('div-id-book-container'));
+    </script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js'
+            integrity='sha512-8Q6Y9XnTbOE+JNvjBQwJ2H8S+UV4uA6hiRykhdtIyDYZ2TprdNmWOUaKdGzOhyr4dCyk287OejbPvwl7lrfqrQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js'
+            integrity='sha512-MOCpqoRoisCTwJ8vQQiciZv0qcpROCidek3GTFS6KTk2+y7munJIlKCVkFCYY+p3ErYFXCjmFjnfTTRSC1OHWQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js'
+            integrity='sha512-kp7YHLxuJDJcOzStgd6vtpxr4ZU9kjn77e6dBsivSz+pUuAuMlE2UTdKB7jjsWT84qbS8kdCWHPETnP/ctrFsA=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+{% endblock %}
