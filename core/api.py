@@ -244,7 +244,7 @@ class UserReadingInfoApiEventVersion1Component(APIView):
             action = request.data.get('action')
             try:
                 getattr(getattr(book, field), action)(self.request.user)
-            except TypeError:
+            except (TypeError, AttributeError):
                 raise Exception('Invalid field: {} or action: {}'.format(field, action))
 
         response = {
@@ -383,6 +383,7 @@ class UserPasswordUpdateApiEventVersion1Component(APIView):
 class RequestCopyOfDataApiEventVersion1Component(APIView):
 
     def get(self, request, *args, **kwargs):
+        # todo
         alerts = [
             {'alert': 'success', 'message': 'A copy of your data will be sent to your email.'}
         ]
