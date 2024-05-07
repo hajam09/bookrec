@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
-from core.forms import LoginForm
 from bookrec.settings import TEST_PASSWORD
 from bookrec.tests.BaseTest import BaseTest
+from core.forms import LoginForm
 
 
 class LoginFormTest(BaseTest):

@@ -143,9 +143,11 @@ def passwordUpdateRequest(request, base64, token):
         if form.is_valid():
             form.updatePassword()
             return redirect('core:login-view')
+    else:
+        form = PasswordUpdateForm()
 
     context = {
-        'form': PasswordUpdateForm(),
+        'form': form,
     }
 
     TEMPLATE = 'passwordUpdateForm' if user is not None and verifyToken else 'linkFailedTemplate'

@@ -10,7 +10,7 @@ class ProfileApiEventVersion1ComponentTest(BaseTestAjax):
         super(ProfileApiEventVersion1ComponentTest, self).setUp(path)
         self.login()
 
-    def test_get_profile_success(self):
+    def testGetProfileSuccess(self):
         response = self.get()
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['version'], '1.0.0')
@@ -24,7 +24,7 @@ class ProfileApiEventVersion1ComponentTest(BaseTestAjax):
         )
         self.assertIsNone(response.data['data']['profile']['profilePicture'])
 
-    def test_update_profile_success(self):
+    def testUpdateProfileSuccess(self):
         data = {
             'firstName': 'Updated First Name',
             'lastName': 'Updated Last Name',

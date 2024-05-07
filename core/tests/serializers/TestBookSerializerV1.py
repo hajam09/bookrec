@@ -5,7 +5,7 @@ from core.serializers import BookSerializerV1
 
 class BookSerializerV1Test(TestCase):
     def setUp(self):
-        self.book_data = {
+        self.bookData = {
             'title': 'Test Book',
             'description': 'This is a test book',
             'isbn13': '9780123456789',
@@ -13,27 +13,27 @@ class BookSerializerV1Test(TestCase):
             'categories': ['Fiction', 'Sci-Fi']
         }
 
-    def test_valid_serializer_data(self):
-        serializer = BookSerializerV1(data=self.book_data)
+    def testValidSerializerData(self):
+        serializer = BookSerializerV1(data=self.bookData)
         self.assertTrue(serializer.is_valid())
 
-    def test_invalid_serializer_data_missing_fields(self):
+    def testInvalidSerializerDataMissingFields(self):
         # Removing required fields to make serializer data invalid
-        del self.book_data['title']
-        serializer = BookSerializerV1(data=self.book_data)
+        del self.bookData['title']
+        serializer = BookSerializerV1(data=self.bookData)
         self.assertFalse(serializer.is_valid())
         self.assertIn('title', serializer.errors)
 
-    def test_invalid_serializer_data_invalid_rating(self):
+    def testInvalidSerializerDataInvalidRating(self):
         # Providing invalid averageRating (not a float)
-        self.book_data['averageRating'] = 'not_a_float'
-        serializer = BookSerializerV1(data=self.book_data)
+        self.bookData['averageRating'] = 'not_a_float'
+        serializer = BookSerializerV1(data=self.bookData)
         self.assertFalse(serializer.is_valid())
         self.assertIn('averageRating', serializer.errors)
 
-    def test_invalid_serializer_data_invalid_categories(self):
+    def testInvalidSerializerDataInvalidCategories(self):
         # Providing invalid categories (not a list)
-        self.book_data['categories'] = 'Fiction'
-        serializer = BookSerializerV1(data=self.book_data)
+        self.bookData['categories'] = 'Fiction'
+        serializer = BookSerializerV1(data=self.bookData)
         self.assertFalse(serializer.is_valid())
         self.assertIn('categories', serializer.errors)

@@ -21,7 +21,7 @@ class UserReadingInfoApiEventVersion1ComponentTest(BaseTestAjax):
         self.book.toRead.add(self.user)
         self.book.haveRead.add(self.user)
 
-    def test_get_user_reading_info(self):
+    def testGetUserReadingInfo(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['version'], '1.0.0')

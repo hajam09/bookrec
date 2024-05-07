@@ -70,13 +70,13 @@ class BookReviewActionApiEventVersion1Component(APIView):
             creator_id=self.request.user.id,
             defaults={
                 'comment': request.data.get('comment'),
-                'rating': request.data.get('rating'),
+                'rating': int(request.data.get('rating')),
             }
         )
 
         if not created:
             bookReview.comment = request.data.get('comment')
-            bookReview.rating = request.data.get('rating')
+            bookReview.rating = int(request.data.get('rating'))
             bookReview.edited = True
             bookReview.save(update_fields=['comment', 'rating', 'edited'])
 
@@ -92,6 +92,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         return Response(response, status=HTTPStatus.OK)
 
     def get(self, request, *args, **kwargs):
+        # write unit test for this method.
         bookReviews = BookReview.objects.select_related('creator').prefetch_related('likes', 'dislikes').filter(
             book__isbn13=kwargs.get('isbn13')
         )
@@ -163,14 +164,11 @@ class BookReviewActionApiEventVersion1Component(APIView):
         return Response(response, status=HTTPStatus.OK)
 
     def delete(self, request, *args, **kwargs):
-        bookReview = BookReview.objects.filter(
+        BookReview.objects.filter(
             id=request.data.get('id'),
             book__isbn13=kwargs.get('isbn13'),
             creator=self.request.user,
-        ).first()
-
-        if bookReview is not None:
-            bookReview.delete()
+        ).delete()
 
         response = {
             'version': '1.0.0',

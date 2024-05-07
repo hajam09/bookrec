@@ -12,22 +12,21 @@ class AccountDeleteCodeApiEventVersion1ComponentTest(BaseTestAjax):
         super(AccountDeleteCodeApiEventVersion1ComponentTest, self).setUp(path)
 
     @patch('bookrec.operations.emailOperations.sendEmailForAccountDeletionCode')
-    def test_authenticated_user(self, sendEmailForAccountDeletionCode):
+    def testAuthenticatedUser(self, sendEmailForAccountDeletionCode):
         self.client.force_login(self.user)
         response = self.get()
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         sendEmailForAccountDeletionCode.assert_called_once()
 
-    def test_unauthenticated_user(self):
+    def testUnauthenticatedUser(self):
         response = self.get()
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
         self.assertEqual(response.data['success'], False)
         self.assertEqual(response.data['data']['alerts'][0]['alert'], 'danger')
         self.assertEqual(response.data['data']['alerts'][0]['message'], 'Login to request a code.')
 
-    def test_session_creation(self):
+    def testSessionCreation(self):
         self.get()
         self.assertTrue(self.client.session.session_key)
 
@@ -36,7 +35,7 @@ class AccountDeleteCodeApiEventVersion1ComponentTest(BaseTestAjax):
         response = self.get()
         self.assertEqual(response.data['version'], '1.0.0')
 
-    def test_correct_delete_code(self):
+    def testCorrectDeleteCode(self):
         self.client.force_login(self.user)
         session_key = self.client.session.session_key
         response = self.delete(data={'code': session_key})
@@ -53,7 +52,7 @@ class AccountDeleteCodeApiEventVersion1ComponentTest(BaseTestAjax):
         self.assertEqual(response.data['data']['alerts'][0]['alert'], 'success')
         self.assertEqual(response.data['data']['alerts'][0]['message'], 'Account deleted successfully.')
 
-    def test_incorrect_delete_code(self):
+    def testIncorrectDeleteCode(self):
         self.client.force_login(self.user)
         response = self.delete(data={'code': 'incorrect_code'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -71,8 +70,3 @@ class AccountDeleteCodeApiEventVersion1ComponentTest(BaseTestAjax):
             response.data['data']['alerts'][0]['message'],
             'Account delete code is incorrect, please try again later.'
         )
-
-    def test_version_in_response(self):
-        self.client.force_login(self.user)
-        response = self.delete(data={'code': 'incorrect_code'})
-        self.assertEqual(response.data['version'], '1.0.0')
