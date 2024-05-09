@@ -4,6 +4,7 @@ from http import HTTPStatus
 
 import pandas
 from django.contrib.auth import authenticate, login
+from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count, FloatField, Func, F
 from django.db.models.functions import Greatest, Cast
@@ -185,8 +186,11 @@ class BookReviewActionApiEventVersion1Component(APIView):
 class UserShelfApiEventVersion1Component(APIView):
     def get(self, request, *args, **kwargs):
         shelf = request.GET.get('shelf')
+        cachedData = cache.get(f'user-shelf-{shelf}-{self.request.user.id}')
 
-        if shelf == 'ratedAndReviewed':
+        if cachedData:
+            data = cachedData
+        elif shelf == 'ratedAndReviewed':
             reviews = BookReview.objects.filter(creator=self.request.user).select_related('book')
             data = BookReviewSerializerV2(reviews, many=True).data
         elif shelf == 'recentlyViewed':
@@ -218,6 +222,8 @@ class UserShelfApiEventVersion1Component(APIView):
             'success': True,
             'data': data,
         }
+        if not cachedData:
+            cache.set(f'user-shelf-{shelf}-{self.request.user.id}', data, timeout=30)
         return Response(response, status=HTTPStatus.OK)
 
 

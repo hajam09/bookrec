@@ -1,4 +1,5 @@
 *.pyc
+*.coverage
 *.sqlite3
 media/
 .idea/
