@@ -189,7 +189,18 @@
             }
 
             handleDataRequest = () => {
-                fetch('{% url 'core:requestCopyOfDataApiEventVersion1Component' %}', {
+                const selectedFormat = Array.from(this.refs.refFormatSelect.options)
+                    .find(option => option.selected);
+
+                let url = null;
+                if (selectedFormat.value === 'json')
+                    url = '{% url 'core:requestCopyOfDataApiEventVersion1Component' %}';
+                else if (selectedFormat.value === 'xlsx')
+                    url = '{% url 'core:requestCopyOfDataApiEventVersion2Component' %}';
+                else
+                    throw new Error('Unknown format requested.');
+
+                fetch(url, {
                     method: 'GET',
                 }).then((response) => response.json())
                     .then((response) => {
@@ -241,6 +252,18 @@
                         <div className='card w-75'>
                             <div className='card-body'>
                                 <label className='d-block'>Obtain a copy of your data</label>
+                                <div className='row'>
+                                    <div className='col-md-auto'>
+                                        <small>Select data format:</small>
+                                    </div>
+                                    <div className='col'>
+                                        <select className='form-control form-control-sm' ref='refFormatSelect'>
+                                            <option value='json'>JSON</option>
+                                            <option value='xlsx'>XLSX (Excel Spreadsheet)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className='w-75 p-1'></div>
                                 <button className='btn btn-outline-primary btn-sm' type='button'
                                         onClick={this.handleDataRequest}>
                                     Request data

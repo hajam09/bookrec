@@ -5,6 +5,7 @@ import pandas
 import requests
 import unidecode
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.db.models import Q
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import sigmoid_kernel
@@ -29,7 +30,6 @@ def getThumbnailForBook(additionalData):
             return imageLinks.get('thumbnail')
         if imageLinks.get('smallThumbnail') is not None:
             return imageLinks.get('smallThumbnail')
-    # TODO: change size.
     return 'https://dummyimage.com/1997x3101'
 
 
@@ -168,12 +168,23 @@ def googleBooksAPIRequests(query):
 
 
 def recentlyAddedBooks():
+    queryset = cache.get('recently-added-books')
+    if queryset:
+        return queryset
+
     allBooks = Book.objects.all()
     count = allBooks.count()
-    return allBooks[count - 20:] if count > 20 else allBooks[:]
+
+    queryset = allBooks[count - 20:] if count > 20 else allBooks[:]
+    cache.set('recently-added-books', queryset, timeout=30)
+    return queryset
 
 
 def booksBasedOnRatings():
+    queryset = cache.get('books-based-on-ratings')
+    if queryset:
+        return queryset
+
     allBooks = Book.objects.all().prefetch_related('favouriteRead')
     if allBooks.count() == 0:
         return []
@@ -199,10 +210,16 @@ def booksBasedOnRatings():
     booksScoredFromDf = df.sort_values(['score'], ascending=False)
     finalResult = list(booksScoredFromDf[['isbn13']].head(15)['isbn13'])
 
-    return Book.objects.filter(isbn13__in=finalResult)
+    queryset = Book.objects.filter(isbn13__in=finalResult)
+    cache.set('books-based-on-ratings', queryset, timeout=30)
+    return queryset
 
 
 def booksBasedOnViewings(request):
+    queryset = cache.get(f'books-based-on-ratings-{request.user.id}')
+    if queryset:
+        return queryset
+
     history = request.session.get('history', [])
     if not history:
         return []
@@ -242,7 +259,10 @@ def booksBasedOnViewings(request):
         for viewedBook in Book.objects.filter(isbn13__in=history, description__isnull=False)
     ]
     flattenedIsbn13 = [item for subList in isbn13List2D for item in subList]
-    return Book.objects.filter(isbn13__in=flattenedIsbn13).distinct()
+
+    queryset = Book.objects.filter(isbn13__in=flattenedIsbn13).distinct()
+    cache.set(f'books-based-on-ratings-{request.user.id}', queryset, timeout=30)
+    return queryset
 
 
 def booksBasedOnRating(request):
@@ -290,19 +310,30 @@ def otherUsersFavouriteBooks(request):
         Return list of other favourite books from similar user(s).
         Attributes to determine the similarity: list of favourite books from each user.
     """
+    queryset = cache.get(f'other-users-favourite-books-{request.user.id}')
+    if queryset:
+        return queryset
+
     if not request.user.is_authenticated:
         return []
     favouriteBooks = Book.objects.filter(favouriteRead__id=request.user.id).values_list('id', flat=True)
     otherUsers = User.objects.filter(
         favouriteRead__id__in=favouriteBooks
     ).exclude(id=request.user.id).values_list('id', flat=True)
-    return Book.objects.filter(favouriteRead__in=otherUsers).order_by('-averageRating').distinct()[:10]
+
+    queryset = Book.objects.filter(favouriteRead__in=otherUsers).order_by('-averageRating').distinct()[:10]
+    cache.set(f'other-users-favourite-books-{request.user.id}', queryset, timeout=30)
+    return queryset
 
 
 def similarBooks(book):
     """
         Content Based Recommendation System - Make recommendations based on the book's description.
     """
+    queryset = cache.get(f'content-based-recommendations-{book.id}')
+    if queryset:
+        return queryset
+
     allBooks = Book.objects.all().prefetch_related('favouriteRead')
     if allBooks.count() == 0:
         return []
@@ -344,11 +375,12 @@ def similarBooks(book):
 
     originalTable = giveRecommendation()
     df = df[df.title.isin(list(originalTable))]
-    return Book.objects.filter(isbn13__in=list(df['isbn13']))
+    queryset = Book.objects.filter(isbn13__in=list(df['isbn13']))
+    cache.set(f'content-based-recommendations-{book.id}', queryset, timeout=30)
+    return queryset
 
 
 def booksBasedOnFavouriteGenres(request):
-    # todo: for each favouriteGenres, find similar categories that match string using similarity and use those.
     query = Q()
     for genre in request.user.profile.favouriteGenres:
         query |= Q(categories__contains=[genre])

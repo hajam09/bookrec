@@ -188,20 +188,10 @@ class PasswordUpdateForm(forms.Form):
         confirmPassword = self.cleaned_data.get('repeatPassword')
 
         if newPassword != confirmPassword:
-            messages.error(
-                self.request,
-                'Your new password and confirm password does not match.'
-            )
             raise ValidationError('Your new password and confirm password does not match.')
 
         if not generalOperations.isPasswordStrong(newPassword):
-            messages.warning(
-                self.request,
-                'Your new password is not strong enough.'
-            )
             raise ValidationError('Your new password is not strong enough.')
-
-        # TODO: use validate_password for better security.
 
         return self.cleaned_data
 

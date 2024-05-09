@@ -1,7 +1,8 @@
 version: '3.8'
 services:
+  # PostgreSQL service
   database:
-    image: postgres:16.2
+    image: postgres:latest
     restart: always
     environment:
       - POSTGRES_USER=postgres
@@ -10,6 +11,15 @@ services:
       - '5432:5432'
     volumes:
       - database:/var/lib/postgresql/data
+  # Redis service
+  redis:
+    image: redis:latest
+    restart: always
+    environment:
+      - REDIS_PASSWORD=redis-password
+    ports:
+      - '6379:6379'
+    command: redis-server --save 60 1 --requirepass redis-password
 volumes:
   database:
     driver: local
