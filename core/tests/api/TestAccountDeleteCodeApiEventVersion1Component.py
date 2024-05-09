@@ -30,7 +30,7 @@ class AccountDeleteCodeApiEventVersion1ComponentTest(BaseTestAjax):
         self.get()
         self.assertTrue(self.client.session.session_key)
 
-    def test_version_in_response(self):
+    def testVersionInResponse(self):
         self.client.force_login(self.user)
         response = self.get()
         self.assertEqual(response.data['version'], '1.0.0')

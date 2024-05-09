@@ -46,6 +46,11 @@ accountApiUrls = [
         'api/v1/requestCopyOfDataApiEventVersion1Component',
         RequestCopyOfDataApiEventVersion1Component.as_view(),
         name='requestCopyOfDataApiEventVersion1Component'
+    ),
+    path(
+        'api/v2/requestCopyOfDataApiEventVersion2Component',
+        RequestCopyOfDataApiEventVersion2Component.as_view(),
+        name='requestCopyOfDataApiEventVersion2Component'
     )
 ]
 

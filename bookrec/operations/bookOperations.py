@@ -29,7 +29,6 @@ def getThumbnailForBook(additionalData):
             return imageLinks.get('thumbnail')
         if imageLinks.get('smallThumbnail') is not None:
             return imageLinks.get('smallThumbnail')
-    # TODO: change size.
     return 'https://dummyimage.com/1997x3101'
 
 

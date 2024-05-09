@@ -1,3 +1,5 @@
+import json
+
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -80,5 +82,25 @@ def sendEmailToChangePassword(request, user: User):
         '''
 
     emailMessage = EmailMessage(emailSubject, message, settings.EMAIL_HOST_USER, [user.email])
+    emailMessage.send()
+    return
+
+
+def sendEmailForUserDataAsJson(user: User, userData: dict):
+    emailSubject = 'Bookrec User Data'
+    message = 'Attached is your user data export file.'
+
+    emailMessage = EmailMessage(emailSubject, message, settings.EMAIL_HOST_USER, [user.email])
+    emailMessage.attach('Bookrec_user_data.json', json.dumps(userData, indent=4), 'application/json')
+    emailMessage.send()
+    return
+
+
+def sendEmailForUserDataAsXlsx(user: User, file):
+    emailSubject = 'Bookrec User Data'
+    message = 'Attached is your user data export file.'
+
+    emailMessage = EmailMessage(emailSubject, message, settings.EMAIL_HOST_USER, [user.email])
+    emailMessage.attach_file(file)
     emailMessage.send()
     return

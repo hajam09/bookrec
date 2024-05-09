@@ -39,7 +39,16 @@ class BookSerializerV2(serializers.ModelSerializer):
         return float(book.averageRating)
 
 
-class BookReviewSerializer(serializers.ModelSerializer):
+class BookSerializerV3(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = [
+            'isbn13',
+            'title',
+        ]
+
+
+class BookReviewSerializerV1(serializers.ModelSerializer):
     name = serializers.SerializerMethodField('_name')
     netVote = serializers.SerializerMethodField('_netVote')
     canEdit = serializers.SerializerMethodField('_canEdit')
@@ -108,6 +117,20 @@ class BookReviewSerializerV2(serializers.ModelSerializer):
         ]
 
 
+class BookReviewSerializerV3(serializers.ModelSerializer):
+    isbn13 = serializers.CharField(source='book.isbn13', read_only=True)
+    title = serializers.CharField(source='book.title', read_only=True)
+
+    class Meta:
+        model = BookReview
+        fields = [
+            'isbn13',
+            'title',
+            'rating',
+            'comment',
+        ]
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -121,6 +144,8 @@ class UserAndProfileSerializer(serializers.ModelSerializer):
     firstName = serializers.CharField(source='user.first_name', read_only=True)
     lastName = serializers.CharField(source='user.last_name', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    dateJoined = serializers.CharField(source='user.date_joined', read_only=True)
 
     class Meta:
         model = Profile
@@ -128,6 +153,8 @@ class UserAndProfileSerializer(serializers.ModelSerializer):
             'firstName',
             'lastName',
             'email',
+            'username',
+            'dateJoined',
             'favouriteGenres',
             'profilePicture'
         ]

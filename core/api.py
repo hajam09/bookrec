@@ -1,5 +1,8 @@
+import os
+from datetime import datetime
 from http import HTTPStatus
 
+import pandas
 from django.contrib.auth import authenticate, login
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count, FloatField, Func, F
@@ -11,7 +14,9 @@ from rest_framework.views import APIView
 from bookrec.operations import bookOperations, emailOperations, generalOperations
 from core.models import Book, BookReview, Category, Profile
 from core.serializers import (
-    BookReviewSerializer, BookSerializerV1, BookReviewSerializerV2, CategorySerializer, UserAndProfileSerializer
+    BookReviewSerializerV1, BookReviewSerializerV2, BookReviewSerializerV3,
+    BookSerializerV1, BookSerializerV3,
+    CategorySerializer, UserAndProfileSerializer
 )
 
 
@@ -81,7 +86,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
             bookReview.save(update_fields=['comment', 'rating', 'edited'])
 
         bookReview.likes.add(self.request.user)
-        serializer = BookReviewSerializer(bookReview, context={'request': self.request})
+        serializer = BookReviewSerializerV1(bookReview, context={'request': self.request})
         response = {
             'version': '1.0.0',
             'success': True,
@@ -92,7 +97,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         return Response(response, status=HTTPStatus.OK)
 
     def get(self, request, *args, **kwargs):
-        # write unit test for this method.
+        # todo: write unit test for this method.
         bookReviews = BookReview.objects.select_related('creator').prefetch_related('likes', 'dislikes').filter(
             book__isbn13=kwargs.get('isbn13')
         )
@@ -131,7 +136,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         except EmptyPage:
             bookReviews = paginator.page(paginator.num_pages)
 
-        serializer = BookReviewSerializer(bookReviews.object_list, many=True, context={'request': self.request})
+        serializer = BookReviewSerializerV1(bookReviews.object_list, many=True, context={'request': self.request})
 
         response = {
             'version': '1.0.0',
@@ -153,7 +158,7 @@ class BookReviewActionApiEventVersion1Component(APIView):
         bookReview.edited = True
         bookReview.save(update_fields=['comment', 'edited'])
 
-        serializer = BookReviewSerializer(bookReview, context={'request': self.request})
+        serializer = BookReviewSerializerV1(bookReview, context={'request': self.request})
         response = {
             'version': '1.0.0',
             'success': True,
@@ -277,7 +282,7 @@ class BookReviewVotingActionApiEventVersion1Component(APIView):
         else:
             raise Exception('Invalid direction')
 
-        serializer = BookReviewSerializer(bookReview, context={'request': self.request})
+        serializer = BookReviewSerializerV1(bookReview, context={'request': self.request})
 
         response = {
             'version': '1.0.0',
@@ -378,15 +383,111 @@ class UserPasswordUpdateApiEventVersion1Component(APIView):
         return Response(response, status=HTTPStatus.OK)
 
 
-class RequestCopyOfDataApiEventVersion1Component(APIView):
+class RequestCopyOfDataApiEventVersionCommon:
+    def getUserData(self):
+        user = getattr(getattr(self, 'request'), 'user')
+
+        profile = Profile.objects.select_related('user').get(user=user)
+        userAndProfileSerializer = UserAndProfileSerializer(profile)
+        favouriteReadBooks = Book.objects.filter(favouriteRead__id=user.id)
+        favouriteReadSerializer = BookSerializerV3(favouriteReadBooks, many=True)
+        readingNowBooks = Book.objects.filter(readingNow__id=user.id)
+        readingNowSerializer = BookSerializerV3(readingNowBooks, many=True)
+        toReadBooks = Book.objects.filter(toRead__id=user.id)
+        toReadSerializer = BookSerializerV3(toReadBooks, many=True)
+        haveReadBooks = Book.objects.filter(haveRead__id=user.id)
+        haveReadSerializer = BookSerializerV3(haveReadBooks, many=True)
+        bookReviews = BookReview.objects.filter(creator=user).select_related('book')
+        bookReviewsSerializer = BookReviewSerializerV3(bookReviews, many=True)
+
+        data = {
+            'userAndProfileSerializer': userAndProfileSerializer,
+            'favouriteReadSerializer': favouriteReadSerializer,
+            'readingNowSerializer': readingNowSerializer,
+            'toReadSerializer': toReadSerializer,
+            'haveReadSerializer': haveReadSerializer,
+            'bookReviewsSerializer': bookReviewsSerializer,
+        }
+        return data
+
+
+class RequestCopyOfDataApiEventVersion1Component(RequestCopyOfDataApiEventVersionCommon, APIView):
 
     def get(self, request, *args, **kwargs):
-        # todo
+        data = self.getUserData()
+        userData = {
+            'profile': {
+                'header': 'Your profile info we have in Bookrec.',
+                'body': data.get('userAndProfileSerializer').data
+            },
+            'favouriteBooks': {
+                'header': 'Your favourite books we have in Bookrec.',
+                'body': data.get('favouriteReadSerializer').data
+            },
+            'readingNowBooks': {
+                'header': 'Your reading now books we have in Bookrec.',
+                'body': data.get('readingNowSerializer').data
+            },
+            'toReadBooks': {
+                'header': 'Your to read books we have in Bookrec.',
+                'body': data.get('toReadSerializer').data
+            },
+            'haveReadBooks': {
+                'header': 'Your have read books we have in Bookrec.',
+                'body': data.get('haveReadSerializer').data
+            },
+            'ratingAndReviewedBooks': {
+                'header': 'Books that you have rated and commented on in Bookrec.',
+                'body': data.get('bookReviewsSerializer').data
+            }
+        }
+
+        emailOperations.sendEmailForUserDataAsJson(self.request.user, userData)
         alerts = [
             {'alert': 'success', 'message': 'A copy of your data will be sent to your email.'}
         ]
         response = {
             'version': '1.0.0',
+            'success': True,
+            'data': {
+                'alerts': alerts
+            }
+        }
+        return Response(response, status=HTTPStatus.OK)
+
+
+class RequestCopyOfDataApiEventVersion2Component(RequestCopyOfDataApiEventVersionCommon, APIView):
+
+    def get(self, request, *args, **kwargs):
+        data = self.getUserData()
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        FILE_NAME = f'Bookrec_user_data_{self.request.user.id}-{timestamp}.xlsx'
+
+        profileDf = pandas.DataFrame(data.get('userAndProfileSerializer').data)
+        favouriteDf = pandas.DataFrame(data.get('favouriteReadSerializer').data)
+        readingNowDf = pandas.DataFrame(data.get('readingNowSerializer').data)
+        toReadDf = pandas.DataFrame(data.get('toReadSerializer').data)
+        haveReadDf = pandas.DataFrame(data.get('haveReadSerializer').data)
+        bookReviewsDf = pandas.DataFrame(data.get('bookReviewsSerializer').data)
+
+        profileDf.to_excel(FILE_NAME, index=False, sheet_name='UserProfile')
+        with pandas.ExcelWriter(FILE_NAME, mode='a') as writer:
+            favouriteDf.to_excel(writer, index=False, sheet_name='FavouriteReadBooks')
+            readingNowDf.to_excel(writer, index=False, sheet_name='ReadingNowBooks')
+            toReadDf.to_excel(writer, index=False, sheet_name='ToReadBooks')
+            haveReadDf.to_excel(writer, index=False, sheet_name='HaveReadBooks')
+            bookReviewsDf.to_excel(writer, index=False, sheet_name='RatedAndCommentedBooks')
+
+        emailOperations.sendEmailForUserDataAsXlsx(self.request.user, FILE_NAME)
+        if os.path.exists(FILE_NAME):
+            os.remove(FILE_NAME)
+
+        alerts = [
+            {'alert': 'success', 'message': 'A copy of your data will be sent to your email.'}
+        ]
+        response = {
+            'version': '2.0.0',
             'success': True,
             'data': {
                 'alerts': alerts

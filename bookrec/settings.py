@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-b^zo2zfg4f2@_35%$ien5-tu2ufrlsm1ok=hrwdja4gsb#@k_$'
+SECRET_KEY = config('SECRET_KEY', cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
@@ -80,11 +80,21 @@ WSGI_APPLICATION = 'bookrec.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'PORT': '5432',
+        'ENGINE': config('DATABASE_ENGINE', cast=str),
+        'NAME': config('DATABASE_NAME', cast=str),
+        'USER':  config('DATABASE_USER', cast=str),
+        'PASSWORD': config('DATABASE_PASSWORD', cast=str),
+        'PORT': config('DATABASE_PORT', cast=str),
+    }
+}
+
+# Cache
+# https://docs.djangoproject.com/en/5.0/ref/settings/#caches
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://:redis-password@localhost:6379',
     }
 }
 
@@ -135,22 +145,18 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 LOGIN_URL = '/login'
 
-# Email & Additional settings
+# Email settings
+EMAIL_BACKEND = config('EMAIL_BACKEND', cast=str)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', cast=bool)
+EMAIL_HOST = config('EMAIL_HOST', cast=str)
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', cast=str)
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', cast=str)
+
+# Additional settings
 if DEBUG:
-    EMAIL_HOST = 'localhost'
-    EMAIL_PORT = 1025
-    EMAIL_HOST_USER = ''
-    EMAIL_HOST_PASSWORD = ''
-    EMAIL_USE_TLS = False
-    DEFAULT_FROM_EMAIL = 'testing@example.com'
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     INSTALLED_APPS.append('debug_toolbar')
     MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_USE_TLS = True
-    EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_HOST_USER = 'qmwebprog2019@gmail.com'
-    EMAIL_PORT = 587
 
 TEST_PASSWORD = 'LlOrp$C8g$i2A!f*ylIROzHb@6j1sq'
