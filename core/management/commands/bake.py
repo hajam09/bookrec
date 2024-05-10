@@ -40,7 +40,7 @@ class Command(BaseCommand):
         try:
             with transaction.atomic():
                 self.downloadBooks()
-                self.bulkCreateUsers()
+                self.bulkCreateUsersAndProfiles()
                 self.bulkCreateBookReviews()
         except BaseException as e:
             print('Failed to seed data. Rolled back all the transactions', e)
@@ -50,7 +50,7 @@ class Command(BaseCommand):
     def _email(self, first_name, last_name):
         return f'{first_name}.{last_name}@{self.faker.free_email_domain()}'
 
-    def bulkCreateUsers(self):
+    def bulkCreateUsersAndProfiles(self):
         print(f'Attempting to create {Command.NUMBER_OF_USERS} users and profiles.')
         Profile.objects.all().delete()
         User.objects.filter(is_superuser=False).delete()

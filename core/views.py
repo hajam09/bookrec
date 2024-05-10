@@ -14,7 +14,7 @@ from django.utils.http import urlsafe_base64_decode
 
 from bookrec.operations import bookOperations, emailOperations
 from core.forms import LoginForm, PasswordUpdateForm, RegistrationForm
-from core.models import Category, Book, BookReview
+from core.models import Category, Book
 
 
 def loginView(request):
@@ -196,7 +196,6 @@ def bookDetailView(request, isbn13):
     context = {
         'book': book,
         'similarBooks': bookOperations.similarBooks(book),
-        'reviews': BookReview.objects.filter(book=book).order_by('-createdDateTime'),
     }
     return render(request, 'core/bookDetailView.html', context)
 

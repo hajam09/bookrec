@@ -1,5 +1,7 @@
 import datetime
+import operator
 import re
+from functools import reduce
 
 import pandas
 import requests
@@ -86,6 +88,14 @@ class ApiBook:
         self.ratingsCount = ratingsCount
 
 
+def performComplexBookSearch(query):
+    attributesToSearch = ['title', 'authors', 'publisher', 'description', 'isbn13', 'categories']
+    filterList = [
+        reduce(operator.or_, [Q(**{f'{a}__icontains': query}) for a in attributesToSearch])
+    ]
+    return Book.objects.filter(reduce(operator.and_, filterList)).distinct()
+
+
 def googleBooksAPIRequests(query):
     response = requests.get('https://www.googleapis.com/books/v1/volumes?q=' + query)
     if response.json().get('totalItems') == 0:
@@ -164,7 +174,9 @@ def googleBooksAPIRequests(query):
             if category.casefold() not in (name.casefold() for name in categoriesFromApiThatMatchDB)
         ]
     )
-    return list(booksFromApiThatMatchDB) + Book.objects.bulk_create(newBooks)
+    newBooksIsbn = [book.isbn13 for book in Book.objects.bulk_create(newBooks)]
+    newBooksQueryset = Book.objects.filter(isbn13__in=newBooksIsbn)
+    return booksFromApiThatMatchDB.union(newBooksQueryset, performComplexBookSearch(query))
 
 
 def recentlyAddedBooks():
