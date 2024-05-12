@@ -16,7 +16,7 @@ class PasswordChangeRequestTest(BaseTestViews):
 
     def testLoginGet(self):
         response = self.get()
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'core/passwordChangeRequest.html')
 
     @patch('bookrec.operations.emailOperations.sendEmailToChangePassword')

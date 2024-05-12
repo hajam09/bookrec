@@ -21,7 +21,7 @@ coreUrls = [
     path('book-list', views.bookListView, name='book-list-view'),
     path('book/<int:isbn13>/', views.bookDetailView, name='book-detail-view'),
     path('user-shelf/', views.userShelfView, name='user-shelf-view'),
-    path('settings/', views.settingsView, name='settings-view'),
+    path('settings/', views.SettingsView.as_view(), name='settings-view'),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('', include(router.urls)),
 ]

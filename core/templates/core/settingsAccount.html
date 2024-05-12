@@ -1,0 +1,148 @@
+{% extends "core/settingsBase.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block settingsContent %}
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css' rel='stylesheet'/>
+    <span id='span-id-settings-account-container'></span>
+    <script type='text/babel'>
+        class AccountComponent extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = {
+                    alerts: [],
+                    deleteAccountCodeRequested: false,
+                }
+            }
+
+            handleDataRequest = () => {
+                const selectedFormat = Array.from(this.refs.refFormatSelect.options).find(option => option.selected);
+
+                let url = null;
+                if (selectedFormat.value === 'json')
+                    url = '{% url 'core:requestCopyOfDataApiEventVersion1Component' %}';
+                else if (selectedFormat.value === 'xlsx')
+                    url = '{% url 'core:requestCopyOfDataApiEventVersion2Component' %}';
+                else
+                    throw new Error('Unknown format requested.');
+
+                fetch(url, {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                alerts: response.data.alerts
+                            });
+                        }
+                    })
+            }
+
+            requestDeleteCode = () => {
+                this.setState({
+                    deleteAccountCodeRequested: true,
+                });
+
+                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                alerts: response.data.alerts
+                            });
+                        }
+                    });
+            }
+
+            handleDeleteAccount = () => {
+                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    body: JSON.stringify({'code': this.refs.refAccountDeleteCode.value})
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.success) {
+                            this.setState({
+                                alerts: response.data.alerts
+                            });
+                            window.location.href = '{% url 'core:index-view' %}';
+                        } else {
+                            this.setState({
+                                alerts: response.data.alerts
+                            });
+                        }
+                    });
+            }
+
+            render = () => {
+                return (
+                    <span>
+                        {this.state.alerts.map((item, i) => <div key={i}
+                                                                 className={'text-center alert alert-' + item.alert}
+                                                                 role='alert'>{item.message}</div>)}
+                        <div className='card-body'>
+                            <label className='d-block'>Obtain a copy of your data</label>
+                            <div className='row'>
+                                <div className='col-md-auto'>
+                                    <small>Select data format:</small>
+                                </div>
+                                <div className='col'>
+                                    <select className='form-control form-control-sm' ref='refFormatSelect'>
+                                        <option value='json'>JSON</option>
+                                        <option value='xlsx'>XLSX (Excel Spreadsheet)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className='w-75 p-1'></div>
+                            <button className='btn btn-outline-primary btn-sm' type='button'
+                                    onClick={this.handleDataRequest}>
+                                Request data
+                            </button>
+                            <small className='form-text text-muted'>Download your data from Bookrec apps and
+                                services, which may include purchase history, app usage, and any stored
+                                data.</small>
+
+                            <hr></hr>
+
+                            <label className='d-block'>Delete your account</label>
+                            {!this.state.deleteAccountCodeRequested ?
+                                <span>
+                                    <button className='btn btn-outline-info btn-sm' type='button'
+                                            onClick={this.requestDeleteCode}> Request code </button>
+                                    <small className='form-text text-muted'>We'll send you a code to your email. Please copy and paste it below.</small>
+                                </span>
+                                :
+                                <span>
+                                    <input type='text' className='form-control form-control-sm' required={true}
+                                           ref='refAccountDeleteCode' placeholder='Enter the code here'></input>
+                                    <br></br>
+                                    <button className='btn btn-danger btn-sm' type='submit'
+                                            onClick={this.handleDeleteAccount}>Delete Account</button>
+                                    <small className='form-text text-muted'>After deleting your account, there's no turning back. Please be sure.</small>
+                                </span>
+                            }
+                        </div>
+                    </span>
+
+                );
+            }
+        }
+
+        ReactDOM.render(<AccountComponent/>, document.getElementById('span-id-settings-account-container'));
+    </script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js'
+            integrity='sha512-8Q6Y9XnTbOE+JNvjBQwJ2H8S+UV4uA6hiRykhdtIyDYZ2TprdNmWOUaKdGzOhyr4dCyk287OejbPvwl7lrfqrQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js'
+            integrity='sha512-MOCpqoRoisCTwJ8vQQiciZv0qcpROCidek3GTFS6KTk2+y7munJIlKCVkFCYY+p3ErYFXCjmFjnfTTRSC1OHWQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js'
+            integrity='sha512-kp7YHLxuJDJcOzStgd6vtpxr4ZU9kjn77e6dBsivSz+pUuAuMlE2UTdKB7jjsWT84qbS8kdCWHPETnP/ctrFsA=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+{% endblock %}

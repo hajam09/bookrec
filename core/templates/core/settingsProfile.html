@@ -1,0 +1,22 @@
+{% extends 'core/settingsBase.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block settingsContent %}
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css' rel='stylesheet'/>
+    <form class='card-body' method='post'>
+        {% csrf_token %}
+        <div class='form-group'>
+            {{ form | crispy }}
+        </div>
+        <button type='submit' class='btn btn-outline-primary btn-block'>Update</button>
+    </form>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js'></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            $('#id_genres').select2({
+                placeholder: 'Favourite Genres',
+                allowClear: true,
+            });
+        });
+    </script>
+{% endblock %}

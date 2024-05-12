@@ -3,12 +3,13 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from bookrec.operations import generalOperations
 from core.models import Category, Profile
 
 
-class RegistrationForm(forms.ModelForm):
+class BaseUserAndProfileForm(forms.ModelForm):
     first_name = forms.CharField(
         label='',
         strip=True,
@@ -20,6 +21,7 @@ class RegistrationForm(forms.ModelForm):
     )
     last_name = forms.CharField(
         label='',
+        strip=True,
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Lastname'
@@ -34,6 +36,40 @@ class RegistrationForm(forms.ModelForm):
             }
         )
     )
+    genres = forms.MultipleChoiceField(
+        label='',
+        choices=[],
+        widget=forms.SelectMultiple(
+            attrs={
+                'class': 'form-control item-selector',
+                'style': 'width: 100%',
+                'required': 'required',
+            }
+        )
+    )
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'genres')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['genres'].choices = [(category.name, category.name) for category in Category.objects.all()]
+
+    def clean_email(self):
+        raise NotImplemented
+
+    def clean_genres(self):
+        if len(self.cleaned_data.get('genres')) < 3:
+            raise ValidationError('Select at least 3 different genres.')
+        return self.cleaned_data.get('genres')
+
+    @transaction.atomic
+    def save(self):
+        raise NotImplemented
+
+
+class RegistrationForm(BaseUserAndProfileForm):
     password1 = forms.CharField(
         label='',
         strip=False,
@@ -52,27 +88,13 @@ class RegistrationForm(forms.ModelForm):
             }
         )
     )
-    genres = forms.MultipleChoiceField(
-        label='',
-        choices=[],
-        widget=forms.SelectMultiple(
-            attrs={
-                'class': 'form-control item-selector',
-                'style': 'width: 100%',
-                'required': 'required',
-            }
-        )
-    )
 
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'email', 'password1', 'password2', 'genres')
 
-    USERNAME_FIELD = 'email'
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['genres'].choices = [(category.name, category.name) for category in Category.objects.all()]
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -94,12 +116,8 @@ class RegistrationForm(forms.ModelForm):
 
         return password1
 
-    def clean_genres(self):
-        if len(self.cleaned_data.get('genres')) < 3:
-            raise ValidationError('Select at least 3 different genres.')
-        return self.cleaned_data.get('genres')
-
-    def save(self, commit=True):
+    @transaction.atomic
+    def save(self):
         user = User()
         user.username = self.cleaned_data.get('email')
         user.email = self.cleaned_data.get('email')
@@ -112,9 +130,8 @@ class RegistrationForm(forms.ModelForm):
         profile.user = user
         profile.favouriteGenres = self.cleaned_data.get('genres')
 
-        if commit:
-            user.save()
-            profile.save()
+        user.save()
+        profile.save()
         return user
 
 
@@ -199,3 +216,96 @@ class PasswordUpdateForm(forms.Form):
         newPassword = self.cleaned_data.get('password')
         self.user.set_password(newPassword)
         self.user.save()
+
+
+class UserSettingsProfileUpdateForm(BaseUserAndProfileForm):
+
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request = request
+        self.fields['email'].disabled = True
+
+        self.fields['first_name'].initial = self.request.user.first_name
+        self.fields['last_name'].initial = self.request.user.last_name
+        self.fields['email'].initial = self.request.user.email
+        self.fields['genres'].initial = self.request.user.profile.favouriteGenres
+
+    def clean_email(self):
+        pass
+
+    @transaction.atomic
+    def save(self):
+        self.request.user.first_name = self.cleaned_data.get('first_name')
+        self.request.user.last_name = self.cleaned_data.get('last_name')
+        self.request.user.profile.favouriteGenres = self.cleaned_data.get('genres')
+
+        self.request.user.save(update_fields=['first_name', 'last_name'])
+        self.request.user.profile.save(update_fields=['favouriteGenres'])
+        messages.success(self.request, 'Profile update successfully.')
+
+
+class UserSettingsPasswordUpdateForm(forms.Form):
+    currentPassword = forms.CharField(
+        label='',
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                'placeholder': 'Current password'
+            }
+        )
+    )
+    newPassword = forms.CharField(
+        label='',
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                'placeholder': 'New password'
+            }
+        )
+    )
+    repeatNewPassword = forms.CharField(
+        label='',
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                'placeholder': 'Repeat new password'
+            }
+        )
+    )
+
+    def __init__(self, request, *args, **kwargs):
+        self.request = request
+        self.user = request.user
+        super(UserSettingsPasswordUpdateForm, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        currentPassword = self.cleaned_data.get('currentPassword')
+        newPassword = self.cleaned_data.get('newPassword')
+        repeatNewPassword = self.cleaned_data.get('repeatNewPassword')
+
+        if currentPassword and not self.user.check_password(currentPassword):
+            raise ValidationError('Your current password does not match with the account\'s existing password.')
+
+        if newPassword and repeatNewPassword:
+            if newPassword != repeatNewPassword:
+                raise ValidationError('Your new password and confirm password does not match.')
+
+            if not generalOperations.isPasswordStrong(newPassword):
+                raise ValidationError('Your new password is not strong enough.')
+
+        return self.cleaned_data
+
+    def updatePassword(self):
+        newPassword = self.cleaned_data.get('newPassword')
+        self.user.set_password(newPassword)
+        self.user.save()
+
+    def reAuthenticate(self):
+        newPassword = self.cleaned_data.get('newPassword')
+        user = authenticate(self.request, username=self.user.username, password=newPassword)
+        if user:
+            login(self.request, user)
+            messages.success(self.request, 'Your password has been updated.')
+        else:
+            messages.warning(self.request, 'Something happened. Try to login to the system again.')
+        return user

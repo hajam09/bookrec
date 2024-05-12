@@ -3,17 +3,22 @@ from http import HTTPStatus
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
 from django.http import Http404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.encoding import force_str, DjangoUnicodeDecodeError
-from django.utils.http import urlsafe_base64_decode
+from django.utils.http import urlsafe_base64_decode, urlencode
+from django.views import View
 
 from bookrec.operations import bookOperations, emailOperations
-from core.forms import LoginForm, PasswordUpdateForm, RegistrationForm
+from core.forms import (
+    LoginForm, PasswordUpdateForm, RegistrationForm, UserSettingsProfileUpdateForm, UserSettingsPasswordUpdateForm
+)
 from core.models import Category, Book
 
 
@@ -154,9 +159,52 @@ def passwordUpdateRequest(request, base64, token):
     return render(request, 'core/{}.html'.format(TEMPLATE), context)
 
 
-@login_required
-def settingsView(request):
-    return render(request, 'core/settingsView.html')
+class SettingsView(LoginRequiredMixin, View):
+    def getTab(self):
+        tabQuery = self.request.GET.get('tab')
+        return tabQuery if tabQuery is None else tabQuery.casefold()
+
+    def getTemplate(self):
+        tab = self.getTab()
+        templates = {
+            'profile': 'settingsProfile.html',
+            'password': 'settingsPassword.html',
+            'account': 'settingsAccount.html',
+        }
+        return f'core/{templates[tab]}'
+
+    def getForm(self, *args):
+        tab = self.getTab()
+        if tab == 'profile':
+            return UserSettingsProfileUpdateForm(*args)
+        elif tab == 'password':
+            return UserSettingsPasswordUpdateForm(*args)
+        elif tab == 'account':
+            return None
+        raise NotImplemented
+
+    def get(self, request, *args, **kwargs):
+        if self.getTab() is None:
+            return redirect(reverse('core:settings-view') + '?' + urlencode({'tab': 'profile'}))
+
+        context = {
+            'form': self.getForm(request),
+        }
+        return render(request, self.getTemplate(), context)
+
+    def post(self, request, *args, **kwargs):
+        tab = self.getTab()
+        form = self.getForm(request, request.POST)
+
+        if tab == 'profile' and form is not None and form.is_valid():
+            form.save()
+        elif tab == 'password' and form is not None and form.is_valid():
+            if isinstance(form, UserSettingsPasswordUpdateForm):
+                form.updatePassword()
+                form.reAuthenticate()
+
+        context = {'form': form}
+        return render(request, self.getTemplate(), context)
 
 
 def indexView(request):

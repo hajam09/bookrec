@@ -82,7 +82,7 @@ DATABASES = {
     'default': {
         'ENGINE': config('DATABASE_ENGINE', cast=str),
         'NAME': config('DATABASE_NAME', cast=str),
-        'USER':  config('DATABASE_USER', cast=str),
+        'USER': config('DATABASE_USER', cast=str),
         'PASSWORD': config('DATABASE_PASSWORD', cast=str),
         'PORT': config('DATABASE_PORT', cast=str),
     }
@@ -158,5 +158,12 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', cast=str)
 if DEBUG:
     INSTALLED_APPS.append('debug_toolbar')
     MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
+else:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 TEST_PASSWORD = 'LlOrp$C8g$i2A!f*ylIROzHb@6j1sq'

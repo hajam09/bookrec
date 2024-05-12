@@ -1,0 +1,19 @@
+{% extends 'core/base.html' %}
+{% load templateTags %}
+{% load static %}
+{% block content %}
+    <div class='container'>
+        <div class='row justify-content-md-center'>
+            <div class='btn-group' role='group' aria-label='Shelf'>
+                {% settingsBaseTabs request %}
+            </div>
+            <br><br>
+            <div class='col-12 d-flex justify-content-center align-items-center'>
+                <div class='card w-75'>
+                    {% block settingsContent %}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -8,8 +8,7 @@ from core.forms import LoginForm
 class LoginFormTest(BaseTest):
 
     def setUp(self, path=None) -> None:
-        self.basePath = path
-        super(LoginFormTest, self).setUp('')
+        super(LoginFormTest, self).setUp(path)
 
     @patch('core.forms.login')
     def testFormIsValid(self, mockLogin):
@@ -26,11 +25,11 @@ class LoginFormTest(BaseTest):
         testParams = self.TestParams(email=self.user.email, password='TEST_PASSWORD')
         form = LoginForm(request=self.request, data=testParams.getData())
         self.assertFalse(form.is_valid())
-        self.assertEquals(len(form.errors), 1)
+        self.assertEqual(len(form.errors), 1)
         self.assertNotIn('_auth_user_id', self.client.session)
 
         for message in form.errors.as_data()['password'][0]:
-            self.assertEquals(message, 'Please enter a correct email and password.')
+            self.assertEqual(message, 'Please enter a correct email and password.')
 
     class TestParams:
 

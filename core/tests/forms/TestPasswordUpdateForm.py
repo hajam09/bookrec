@@ -4,8 +4,7 @@ from core.forms import PasswordUpdateForm
 
 class PasswordUpdateFormTest(BaseTest):
     def setUp(self, path=None) -> None:
-        self.basePath = path
-        super(PasswordUpdateFormTest, self).setUp('')
+        super(PasswordUpdateFormTest, self).setUp(path)
         self.client.logout()
 
     def testNewPasswordAndConfirmPasswordNotEqual(self):
@@ -14,7 +13,7 @@ class PasswordUpdateFormTest(BaseTest):
         self.assertFalse(form.is_valid())
 
         for message in form.errors.as_data().get('__all__')[0]:
-            self.assertEquals(message, 'Your new password and confirm password does not match.')
+            self.assertEqual(message, 'Your new password and confirm password does not match.')
 
     def testNewPasswordNotStrongEnough(self):
         testParams = self.TestParams('123', '123')
@@ -22,7 +21,7 @@ class PasswordUpdateFormTest(BaseTest):
         self.assertFalse(form.is_valid())
 
         for message in form.errors.as_data().get('__all__')[0]:
-            self.assertEquals(message, 'Your new password is not strong enough.')
+            self.assertEqual(message, 'Your new password is not strong enough.')
 
     def testPasswordUpdateSuccessful(self):
         testParams = self.TestParams('RaNdOmPaSsWoRd56', 'RaNdOmPaSsWoRd56')

@@ -6,7 +6,7 @@ from django.test import RequestFactory
 from django.test import TestCase
 
 from bookrec.settings import TEST_PASSWORD
-from core.models import Profile
+from core.models import Profile, Category
 
 
 class BaseTest(TestCase):
@@ -18,6 +18,8 @@ class BaseTest(TestCase):
         )
         self.user.set_password(TEST_PASSWORD)
         self.user.save()
+
+        Category.objects.bulk_create([Category(name=f'Category_{i}') for i in range(10)])
 
         Profile.objects.create(
             user=self.user,

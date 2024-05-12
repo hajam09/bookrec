@@ -48,7 +48,7 @@ class PasswordUpdateRequestTest(BaseTestViews):
         self.assertTemplateUsed(response, 'core/passwordUpdateForm.html')
 
         for message in response.context['form'].errors.as_data()['__all__'][0]:
-            self.assertEquals(message, 'Your new password and confirm password does not match.')
+            self.assertEqual(message, 'Your new password and confirm password does not match.')
 
     def testPasswordUpdateRequestPostUserDoesNotExist(self):
         uid = urlsafe_base64_encode(force_bytes(999999))  # Assuming there's no user with pk=999999
