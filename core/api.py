@@ -304,8 +304,23 @@ class CategoryApiEventVersion1Component(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    def dispatch(self, request, *args, **kwargs):
+        import warnings
+        warnings.warn('This API endpoint is deprecated.', DeprecationWarning, stacklevel=2)
+        return super().dispatch(request, *args, **kwargs)
+
 
 class ProfileApiEventVersion1Component(APIView):
+
+    def dispatch(self, request, *args, **kwargs):
+        import warnings
+        warnings.warn(
+            'This API endpoint is deprecated. Replaced with native Django View.',
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         profile = Profile.objects.get(user=self.request.user)
         serializer = UserAndProfileSerializer(profile)
@@ -341,6 +356,15 @@ class ProfileApiEventVersion1Component(APIView):
 
 
 class UserPasswordUpdateApiEventVersion1Component(APIView):
+
+    def dispatch(self, request, *args, **kwargs):
+        import warnings
+        warnings.warn(
+            'This API endpoint is deprecated. Replaced with native Django View.',
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return super().dispatch(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
         currentPassword = self.request.data.get('currentPassword')
