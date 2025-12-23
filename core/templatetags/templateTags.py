@@ -3,9 +3,25 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
-from bookrec.operations.navigationOperations import linkItem, Icon
-
 register = template.Library()
+
+
+class Icon:
+
+    def __init__(self, name, clazz, size):
+        self.name = name
+        self.clazz = clazz
+        self.size = size
+
+
+def getIcon(icon):
+    if icon is None:
+        return None
+    return f'<i style="font-size:{icon.size}px" class="{icon.clazz}">{icon.name}</i>'
+
+
+def linkItem(name, url, icon=None, subLinks=None):
+    return {'name': name, 'url': url, 'icon': getIcon(icon), 'subLinks': subLinks}
 
 
 @register.simple_tag
@@ -19,7 +35,8 @@ def navigationPanel(request):
             [
                 linkItem('Account', '', None, [
                     linkItem('Shelf', reverse('core:user-shelf-view'), Icon('', 'fas fa-book', '15')),
-                    linkItem('Settings', reverse('core:settings-view') + '?' + urlencode({'tab': 'profile'}), Icon('', 'fa fa-gear', '15')),
+                    linkItem('Settings', reverse('core:settings-view') + '?' + urlencode({'tab': 'profile'}),
+                             Icon('', 'fa fa-gear', '15')),
                     None,
                     linkItem('Logout', reverse('core:logout-view'), Icon('', 'fas fa-sign-out-alt', '15')),
                 ]),
@@ -64,6 +81,7 @@ def settingsBaseTabs(request):
         SettingsTab('My profile', currentTab == 'profile', 'profile'),
         SettingsTab('Update password', currentTab == 'password', 'password'),
         SettingsTab('Account', currentTab == 'account', 'account'),
+        SettingsTab('Activity', currentTab == 'activity', 'activity'),
     ]
 
     itemContent = f'''

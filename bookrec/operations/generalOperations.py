@@ -1,6 +1,9 @@
 from django.contrib.auth.models import User
 
-from core.models import Profile, BookReview
+from core.models import (
+    BookReview,
+    Profile
+)
 
 
 def isPasswordStrong(password):
@@ -22,8 +25,8 @@ def isPasswordStrong(password):
 def redactUserData(user: User):
     user.first_name = 'redacted'
     user.last_name = 'redacted'
-    user.username = 'redacted'
-    user.email = 'redacted@bookrec.com'
+    user.username = f'redacted-{user.id}'
+    user.email = f'redacted-{user.id}@bookrec.com'
     user.is_active = False
     user.set_unusable_password()
     user.save()

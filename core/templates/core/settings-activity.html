@@ -1,0 +1,179 @@
+{% extends "core/settingsBase.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block settingsContent %}
+    <style>
+        .timeline {
+            list-style: none;
+            padding-left: 0;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            width: 2px;
+            height: 100%;
+            background: #dee2e6;
+        }
+
+        .timeline li {
+            position: relative;
+            margin-bottom: 30px;
+            padding-left: 60px;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 8px;
+            top: 0;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            color: #fff;
+            text-align: center;
+            line-height: 25px;
+            font-size: 12px;
+        }
+
+        .timeline-content {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 6px;
+        }
+    </style>
+    <span id='span-id-settings-activity-container'></span>
+    <script type='text/babel'>
+
+        class ActivityComponent extends React.Component {
+
+            constructor(props) {
+                super(props);
+                this.state = {
+                    activities: [],
+                    hasMore: false,
+                    page: 1,
+                }
+            }
+
+            componentDidMount = () => {
+                this.fetchActivities();
+            }
+            
+            fetchActivities = () => {
+                const sortActivitiesBy = document.getElementById('activities-sort-by').value
+                fetch('{% url 'core:userActivityApiVersion1' %}' + '?sort-by=' + sortActivitiesBy + '&page=' + this.state.page, {
+                    method: 'GET',
+                }).then((response) => response.json())
+                    .then((response) => {
+                        if (response.results.success) {
+                            this.setState({
+                                activities: this.state.activities.concat(response.results.activities),
+                                hasMore: response.next !== null
+                            });
+                        }
+                    })
+            }
+            
+            loadMoreActivities = () => {
+                this.setState({
+                    page: this.state.page + 1
+                }, () => {
+                    this.fetchActivities();
+                })
+            }
+
+            sortByDropdownChangedEvent = () => {
+                this.setState({
+                    activities: [],
+                    page: 1,
+                }, () => {
+                    this.fetchActivities();
+                })
+            }
+
+            render = () => {
+                const headerStyle = {fontWeight: 'bold', fontSize: '20px'};
+                const reviewDropdownStyle = {width: 'auto'};
+                return (
+                    <span>
+                        <div className='card-body'>
+                            <div className='row'>
+                                <div className='col'><p style={headerStyle}>Activity Timeline</p></div>
+                                <div className='col'>
+                                    <select className='form-control float-right' name='activities-sort-by'
+                                            id='activities-sort-by'
+                                            onChange={this.sortByDropdownChangedEvent}
+                                            style={reviewDropdownStyle}>
+                                        <option value='new'>New</option>
+                                        <option value='old'>Old</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <ul className="timeline">
+                                {this.state.activities.map((item) => <ActivityInstanceComponent key={item.id}
+                                                                                                activity={item}/>)}
+                                {this.state.hasMore ? <button type='button' className='btn btn-info btn-sm float-right' onClick={this.loadMoreActivities}>Load more</button> : null}
+                                <br></br>
+                            </ul>
+                        </div>
+                    </span>
+                );
+            }
+        }
+
+        class ActivityInstanceComponent extends React.Component {
+            constructor(props) {
+                super(props);
+            }
+
+            render() {
+                return (
+                    <li>
+                        <span className={`timeline-icon bg-${this.props.activity.color}`}>
+                            <i className={`fas ${this.props.activity.icon}`}></i>
+                        </span>
+
+                        <div className="timeline-content">
+                            <h6 className="mb-1">
+                                {this.props.activity.message}
+                            </h6>
+
+                            {this.props.activity.url && (
+                                <a href={this.props.activity.url} className="text-decoration-none">
+                                    {"Click here to view details"}
+                                </a>
+                            )}
+
+                            <div className="text-muted small mt-1">
+                                {new Date(this.props.activity.timeStamp).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                })}
+                            </div>
+                        </div>
+                    </li>
+                );
+            }
+        }
+
+        ReactDOM.render(<ActivityComponent/>, document.getElementById('span-id-settings-activity-container'));
+    </script>
+
+
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js'
+            integrity='sha512-8Q6Y9XnTbOE+JNvjBQwJ2H8S+UV4uA6hiRykhdtIyDYZ2TprdNmWOUaKdGzOhyr4dCyk287OejbPvwl7lrfqrQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js'
+            integrity='sha512-MOCpqoRoisCTwJ8vQQiciZv0qcpROCidek3GTFS6KTk2+y7munJIlKCVkFCYY+p3ErYFXCjmFjnfTTRSC1OHWQ=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js'
+            integrity='sha512-kp7YHLxuJDJcOzStgd6vtpxr4ZU9kjn77e6dBsivSz+pUuAuMlE2UTdKB7jjsWT84qbS8kdCWHPETnP/ctrFsA=='
+            crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+{% endblock %}

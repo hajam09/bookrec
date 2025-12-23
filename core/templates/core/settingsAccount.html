@@ -9,7 +9,7 @@
             constructor(props) {
                 super(props);
                 this.state = {
-                    alerts: [],
+                    alert: {},
                     deleteAccountCodeRequested: false,
                 }
             }
@@ -19,9 +19,7 @@
 
                 let url = null;
                 if (selectedFormat.value === 'json')
-                    url = '{% url 'core:requestCopyOfDataApiEventVersion1Component' %}';
-                else if (selectedFormat.value === 'xlsx')
-                    url = '{% url 'core:requestCopyOfDataApiEventVersion2Component' %}';
+                    url = '{% url 'core:userDataJsonApiVersion1' %}';
                 else
                     throw new Error('Unknown format requested.');
 
@@ -31,7 +29,7 @@
                     .then((response) => {
                         if (response.success) {
                             this.setState({
-                                alerts: response.data.alerts
+                                alert: response.data.alert
                             });
                         }
                     })
@@ -42,20 +40,26 @@
                     deleteAccountCodeRequested: true,
                 });
 
-                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
-                    method: 'GET',
+                fetch('{% url 'core:requestAccountDeleteCodeApiVersion1' %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Encoding': 'gzip',
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    dataType: 'json',
                 }).then((response) => response.json())
                     .then((response) => {
                         if (response.success) {
                             this.setState({
-                                alerts: response.data.alerts
+                                alert: response.data
                             });
                         }
                     });
             }
 
             handleDeleteAccount = () => {
-                fetch('{% url 'core:accountDeleteCodeApiEventVersion1Component' %}', {
+                fetch('{% url 'core:requestAccountDeleteCodeApiVersion1' %}', {
                     method: 'DELETE',
                     headers: {
                         'Content-Encoding': 'gzip',
@@ -68,12 +72,12 @@
                     .then((response) => {
                         if (response.success) {
                             this.setState({
-                                alerts: response.data.alerts
+                                alert: response.data
                             });
                             window.location.href = '{% url 'core:index-view' %}';
                         } else {
                             this.setState({
-                                alerts: response.data.alerts
+                                alert: response.data
                             });
                         }
                     });
@@ -82,9 +86,8 @@
             render = () => {
                 return (
                     <span>
-                        {this.state.alerts.map((item, i) => <div key={i}
-                                                                 className={'text-center alert alert-' + item.alert}
-                                                                 role='alert'>{item.message}</div>)}
+                        {<div className={'text-center alert alert-' + this.state.alert.type}
+                              role='alert'>{this.state.alert.message}</div>}
                         <div className='card-body'>
                             <label className='d-block'>Obtain a copy of your data</label>
                             <div className='row'>
@@ -94,7 +97,6 @@
                                 <div className='col'>
                                     <select className='form-control form-control-sm' ref='refFormatSelect'>
                                         <option value='json'>JSON</option>
-                                        <option value='xlsx'>XLSX (Excel Spreadsheet)</option>
                                     </select>
                                 </div>
                             </div>

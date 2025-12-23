@@ -1,0 +1,162 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+    <style>
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 60px;
+        }
+
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: #007bff;
+            border-radius: 50%;
+            background-size: 60% 60%;
+            width: 30px;
+            height: 30px;
+            opacity: 1;
+        }
+
+        /* Hover effect */
+        .carousel-control-prev-icon:hover,
+        .carousel-control-next-icon:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <div class='container text-center mt-5'>
+
+        <div class='jumbotron'>
+            <h1 class='display-4'>Welcome to BookRec</h1>
+            <p class='lead'>Search our knowledge base for your next book to read!</p>
+        </div>
+
+        <form id="bookSearchForm">
+            <div class="row mt-4">
+                <div class="col-md-6 offset-md-3">
+                    <div class="card">
+                        <div class="card-body">
+
+                            <div class="form-group">
+                                <label for="searchYourself" class="h4">Search for a book</label>
+                                <input type="text" class="form-control" id="searchYourself">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="categoryList" class="h4">Or search by category</label>
+                                <select class="form-control" id="categoryList" name="categoryList">
+                                    <option value="-1">See random books</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category }}">{{ category }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="text-danger mb-2 d-none" id="searchError">
+                                Please search or select a category
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block">
+                                Search
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class='w-75 p-4'></div>
+        {% if recentlyAddedBooks %}
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Recently added books...</p>
+            <div id="recentlyAddedCarousel" class="carousel slide mb-5" data-ride="carousel">
+                <div class="carousel-inner" id="recentlyAddedContent"></div>
+                <a class="carousel-control-prev" href="#recentlyAddedCarousel" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </a>
+                <a class="carousel-control-next" href="#recentlyAddedCarousel" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </a>
+                <ol class="carousel-indicators" id="recentlyAddedIndicators"></ol>
+            </div>
+        {% endif %}
+        {% if booksBasedOnRatings %}
+            <div class='w-75 p-4'></div>
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Books based on ratings...</p>
+            <div id="booksBasedOnRatingsCarousel" class="carousel slide mb-5" data-ride="carousel">
+                <div class="carousel-inner" id="booksBasedOnRatingsContent"></div>
+                <a class="carousel-control-prev" href="#booksBasedOnRatingsCarousel" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </a>
+                <a class="carousel-control-next" href="#booksBasedOnRatingsCarousel" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </a>
+                <ol class="carousel-indicators" id="booksBasedOnRatingsIndicators"></ol>
+            </div>
+        {% endif %}
+        {% if booksBasedOnViewings %}
+            <div class='w-75 p-4'></div>
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Books based on viewings...</p>
+            <div id="booksBasedOnViewingsCarousel" class="carousel slide mb-5" data-ride="carousel">
+                <div class="carousel-inner" id="booksBasedOnViewingsContent"></div>
+                <a class="carousel-control-prev" href="#booksBasedOnViewingsCarousel" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </a>
+                <a class="carousel-control-next" href="#booksBasedOnViewingsCarousel" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </a>
+                <ol class="carousel-indicators" id="booksBasedOnViewingsIndicators"></ol>
+            </div>
+        {% endif %}
+
+        {% if otherUsersFavouriteBooks %}
+            <div class='w-75 p-4'></div>
+            <p style='font-weight:bold;font-size: 20px' class='text-left'>Favourite books from similar users...</p>
+            <div id="otherUsersFavouriteBooksCarousel" class="carousel slide mb-5" data-ride="carousel">
+                <div class="carousel-inner" id="otherUsersFavouriteBooksContent"></div>
+                <a class="carousel-control-prev" href="#otherUsersFavouriteBooksCarousel" role="button"
+                   data-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </a>
+                <a class="carousel-control-next" href="#otherUsersFavouriteBooksCarousel" role="button"
+                   data-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </a>
+                <ol class="carousel-indicators" id="otherUsersFavouriteBooksIndicators"></ol>
+            </div>
+        {% endif %}
+    </div>
+    <script>
+        document.getElementById("bookSearchForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const searchInput = document.getElementById("searchYourself").value.trim();
+            const category = document.getElementById("categoryList").value;
+            const errorBox = document.getElementById("searchError");
+
+            errorBox.classList.add("d-none");
+
+            let queryParam = null;
+
+            if (searchInput && category !== "-1") {
+                queryParam = `query=${encodeURIComponent(category)}`;
+            } else if (searchInput) {
+                queryParam = `query=${encodeURIComponent(searchInput)}`;
+            } else if (category !== "-1") {
+                queryParam = `query=${encodeURIComponent(category)}`;
+            } else {
+                errorBox.classList.remove("d-none");
+                return;
+            }
+
+            const bookListView = '{% url 'core:book-list-view' %}';
+            window.location.href = `${bookListView}?${queryParam}`;
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            buildCarousel({{ recentlyAddedBooks|safe }}, "recentlyAddedContent", "recentlyAddedCarousel");
+            buildCarousel({{ booksBasedOnRatings|safe }}, "booksBasedOnRatingsContent", "booksBasedOnRatingsCarousel");
+            buildCarousel({{ booksBasedOnViewings|safe }}, "booksBasedOnViewingsContent", "booksBasedOnViewingsCarousel");
+            buildCarousel({{ otherUsersFavouriteBooks|safe }}, "otherUsersFavouriteBooksContent", "otherUsersFavouriteBooksCarousel");
+        }, false);
+    </script>
+{% endblock %}
