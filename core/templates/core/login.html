@@ -11,12 +11,15 @@
                     <form method='post'>
                         {% csrf_token %}
                         <div class='card-body'>
-                            <h5 class='card-title text-center'>Update Password</h5>
+                            <h5 class='card-title text-center'>Login</h5>
                             <hr>
-                            {{form | crispy}}
-                            <input type='submit' class='btn btn-primary btn-block' value='Update Password'>
+                            {{ form | crispy }}
+                            <input type='submit' class='btn btn-primary btn-block' value='Login'>
                         </div>
                     </form>
+                    <div class='small text-center mb-3'>
+                        Forgot your password? <a href='{% url 'core:forgot-password-view' %}'>Reset Here</a>
+                    </div>
                 </div>
             </div>
         </div>

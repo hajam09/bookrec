@@ -1,20 +1,29 @@
 import datetime
 import operator
-import re
 from functools import reduce
 
+import numpy
 import pandas
 import requests
-import unidecode
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db.models import Q
+from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics.pairwise import sigmoid_kernel
 from sklearn.preprocessing import MinMaxScaler
 
-from core.models import Book, Category, BookReview
-from core.serializers import BookSerializerV2, BookReviewSerializerV2, BookSerializerV1
+from core.models import (
+    Book,
+    BookReview,
+    Category
+)
+from core.serializers import (
+    BookSerializerV1,
+    BookSerializerV2,
+    BookReviewSerializerV2
+)
 
 
 def getThumbnailForBook(additionalData):
@@ -184,10 +193,15 @@ def recentlyAddedBooks():
     if queryset:
         return queryset
 
-    allBooks = Book.objects.all()
-    count = allBooks.count()
-
-    queryset = allBooks[count - 20:] if count > 20 else allBooks[:]
+    books = Book.objects.order_by('-id').only('title', 'thumbnail', 'isbn13')[:20]
+    queryset = [
+        {
+            'title': book.title,
+            'thumbnail': book.thumbnail,
+            'url': book.getUrl()
+        }
+        for book in books
+    ]
     cache.set('recently-added-books', queryset, timeout=30)
     return queryset
 
@@ -220,9 +234,17 @@ def booksBasedOnRatings():
     df[['normalizedWeightAverage', 'normalizedPopularity']] = bookNormalized
     df['score'] = df['normalizedWeightAverage'] * 0.5 + df['normalizedPopularity'] * 0.5
     booksScoredFromDf = df.sort_values(['score'], ascending=False)
-    finalResult = list(booksScoredFromDf[['isbn13']].head(15)['isbn13'])
+    finalResult = list(booksScoredFromDf[['isbn13']].head(20)['isbn13'])
 
-    queryset = Book.objects.filter(isbn13__in=finalResult)
+    books = Book.objects.filter(isbn13__in=finalResult)
+    queryset = [
+        {
+            'title': book.title,
+            'thumbnail': book.thumbnail,
+            'url': book.getUrl()
+        }
+        for book in books
+    ]
     cache.set('books-based-on-ratings', queryset, timeout=30)
     return queryset
 
@@ -248,31 +270,38 @@ def booksBasedOnViewings(request):
         ngram_range=(1, 3),
         stop_words='english'
     )
-
     tfvMatrix = tfv.fit_transform(allBooksDf['description'])
     sigmoidKernel = sigmoid_kernel(tfvMatrix, tfvMatrix)
     indices = pandas.Series(allBooksDf.index, index=allBooksDf['title']).drop_duplicates()
 
-    def giveRecommendation(book):
+    viewedBooks = Book.objects.filter(isbn13__in=history, description__isnull=False)
+    combinedScores = pandas.Series(0, index=allBooksDf.index)
+    for viewedBook in viewedBooks:
         try:
-            idx = indices[book.title].iloc[0]
-        except AttributeError as e:
-            print(f'Exception triggered for Content Based Recommendation System for isbn13: {book.isbn13} with: {e}')
-            idx = indices[book.title]
+            idx = indices[viewedBook.title].iloc[0]
+        except AttributeError:
+            idx = indices[viewedBook.title]
+        combinedScores += pandas.Series(sigmoidKernel[idx])
 
-        sigmoidScores = list(enumerate(sigmoidKernel[idx]))
-        sigmoidScores = sorted(sigmoidScores, key=lambda x: x[1], reverse=True)
-        sigmoidScores = sigmoidScores[1:11]
-        bookIndices = [i[0] for i in sigmoidScores]
-        return allBooksDf['title'].iloc[bookIndices]
-
-    isbn13List2D = [
-        list(allBooksDf[allBooksDf.title.isin(list(giveRecommendation(viewedBook)))]['isbn13'])
-        for viewedBook in Book.objects.filter(isbn13__in=history, description__isnull=False)
+    viewedIndices = [
+        indices[book.title].iloc[0]
+        if hasattr(indices[book.title], 'iloc') else indices[book.title]
+        for book in viewedBooks
     ]
-    flattenedIsbn13 = [item for subList in isbn13List2D for item in subList]
+    combinedScores.iloc[viewedIndices] = 0
 
-    queryset = Book.objects.filter(isbn13__in=flattenedIsbn13).distinct()
+    topIndices = combinedScores.sort_values(ascending=False).head(20).index
+    topBooks = allBooksDf.iloc[topIndices]
+
+    books = Book.objects.filter(isbn13__in=topBooks['isbn13']).distinct()
+    queryset = [
+        {
+            'title': book.title,
+            'thumbnail': book.thumbnail,
+            'url': book.getUrl()
+        }
+        for book in books
+    ]
     cache.set(f'books-based-on-ratings-{request.user.id}', queryset, timeout=30)
     return queryset
 
@@ -319,36 +348,84 @@ def booksBasedOnRating(request):
 
 def otherUsersFavouriteBooks(request):
     """
-        Return list of other favourite books from similar user(s).
-        Attributes to determine the similarity: list of favourite books from each user.
+    Recommend top 20 books to the current user based on other users with similar favourite books.
+    Uses a sparse user-book matrix and cosine similarity for scalable collaborative filtering.
+    Exclude books the user has already favourited. Results are cached for performance.
     """
+    if not request.user.is_authenticated:
+        return []
+
     queryset = cache.get(f'other-users-favourite-books-{request.user.id}')
     if queryset:
         return queryset
 
-    if not request.user.is_authenticated:
-        return []
-    favouriteBooks = Book.objects.filter(favouriteRead__id=request.user.id).values_list('id', flat=True)
-    otherUsers = User.objects.filter(
-        favouriteRead__id__in=favouriteBooks
-    ).exclude(id=request.user.id).values_list('id', flat=True)
+    # Step 1: Get all user-book favourite relationships
+    books = Book.objects.prefetch_related('favouriteRead')
+    users = list(User.objects.values_list('id', flat=True))
+    userIndex = {uid: i for i, uid in enumerate(users)}
+    bookIds = [book.id for book in books]
+    bookIndex = {bid: i for i, bid in enumerate(bookIds)}
 
-    queryset = Book.objects.filter(favouriteRead__in=otherUsers).order_by('-averageRating').distinct()[:10]
+    # Step 2: Build sparse user-book matrix
+    row, col = [], []
+    for book in books:
+        for user in book.favouriteRead.all():
+            row.append(userIndex[user.id])
+            col.append(bookIndex[book.id])
+    data = numpy.ones(len(row))
+    userBookMatrix = csr_matrix((data, (row, col)), shape=(len(users), len(bookIds)))
+
+    # Step 3: Compute similarity with current user
+    userVec = userBookMatrix[userIndex[request.user.id]]
+    similarities = cosine_similarity(userVec, userBookMatrix).flatten()
+
+    # Step 4: Score all books by similarity of users who favourited them
+    scores = userBookMatrix.T.dot(similarities)
+
+    # Step 5: Remove books the user already has
+    userBooksMask = userBookMatrix[userIndex[request.user.id]].toarray().flatten()
+    scores[userBooksMask > 0] = 0
+
+    # Step 6: Get top 20 books
+    topIndices = numpy.argpartition(-scores, 20)[:20]
+    topIndices = topIndices[numpy.argsort(-scores[topIndices])]
+
+    recommendedBooks = [books[int(i)] for i in topIndices]
+    queryset = [
+        {
+            'title': book.title,
+            'thumbnail': book.thumbnail,
+            'url': book.getUrl()
+        }
+        for book in recommendedBooks
+    ]
     cache.set(f'other-users-favourite-books-{request.user.id}', queryset, timeout=30)
     return queryset
 
 
 def similarBooks(book):
     """
-        Content Based Recommendation System - Make recommendations based on the book's description.
+    Content-Based Book Recommendation System:
+    Given a Book instance, returns up to 12 similar books based on similarity
+    of book descriptions, categories, authors, and publisher.
+    Caches the results for 30 seconds to improve performance.
     """
     queryset = cache.get(f'content-based-recommendations-{book.id}')
     if queryset:
         return queryset
 
-    allBooks = Book.objects.all().prefetch_related('favouriteRead')
+    allBooks = Book.objects.all()
     if allBooks.count() == 0:
         return []
+
+    descriptions = [book.description or "" for book in allBooks]
+    authors = [", ".join(book.authors) if book.authors else "" for book in allBooks]
+    categories = [", ".join(book.categories) if book.categories else "" for book in allBooks]
+
+    combinedFeatures = [
+        desc + " " + authors + " " + categories
+        for desc, authors, categories in zip(descriptions, authors, categories)
+    ]
 
     tfv = TfidfVectorizer(
         min_df=3,
@@ -359,35 +436,26 @@ def similarBooks(book):
         ngram_range=(1, 3),
         stop_words='english'
     )
+    tfvMatrix = tfv.fit_transform(combinedFeatures)
 
-    bookSerializer = BookSerializerV2(allBooks, many=True)
-    df = pandas.DataFrame(bookSerializer.data)
-    df['description'] = df['description'].fillna('')
+    bookDescription = book.description or ""
+    bookAuthors = ", ".join(book.authors) if book.authors else ""
+    bookCategories = ", ".join(book.categories) if book.categories else ""
 
-    tfvMatrix = tfv.fit_transform(df['description'])
-    sigmoidKernel = sigmoid_kernel(tfvMatrix, tfvMatrix)
-    indices = pandas.Series(df.index, index=df['title']).drop_duplicates()
+    bookTransformed = tfv.transform([bookDescription + " " + bookAuthors + " " + bookCategories])
+    similarities = cosine_similarity(bookTransformed, tfvMatrix).flatten()
 
-    bookTitle = book.title.replace(',', '').replace('-', '').replace('–', '')
-    bookTitle = ''.join(e for e in bookTitle if e.isalnum() or e == ' ')
-    bookTitle = re.sub(' +', ' ', bookTitle)
-    bookTitle = unidecode.unidecode(bookTitle)
+    similarBooksIndices = similarities.argsort()[-12 - 1:-1][::-1]
+    recommendedBooks = [allBooks[int(i)] for i in similarBooksIndices]
 
-    def giveRecommendation():
-        try:
-            idx = indices[bookTitle].iloc[0]
-        except AttributeError as e:
-            print(f'Exception triggered for Content Based Recommendation System for isbn13: {book.isbn13} with: {e}')
-            idx = indices[bookTitle]
-        sigmoidScores = list(enumerate(sigmoidKernel[idx]))
-        sigmoidScores = sorted(sigmoidScores, key=lambda x: x[1], reverse=True)
-        sigmoidScores = sigmoidScores[1:11]
-        bookIndices = [i[0] for i in sigmoidScores]
-        return df['title'].iloc[bookIndices]
-
-    originalTable = giveRecommendation()
-    df = df[df.title.isin(list(originalTable))]
-    queryset = Book.objects.filter(isbn13__in=list(df['isbn13']))
+    queryset = [
+        {
+            'title': book.title,
+            'thumbnail': book.thumbnail,
+            'url': book.getUrl()
+        }
+        for book in recommendedBooks
+    ]
     cache.set(f'content-based-recommendations-{book.id}', queryset, timeout=30)
     return queryset
 

@@ -1,5 +1,3 @@
-from http import HTTPStatus
-
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
@@ -7,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -15,26 +14,35 @@ from django.utils.encoding import force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlencode
 from django.views import View
 
-from bookrec.operations import bookOperations, emailOperations
-from core.forms import (
-    LoginForm, PasswordUpdateForm, RegistrationForm, UserSettingsProfileUpdateForm, UserSettingsPasswordUpdateForm
+from bookrec.operations import (
+    bookOperations,
+    emailOperations,
+    logOperations
 )
-from core.models import Category, Book
+from core.forms import (
+    LoginForm,
+    PasswordUpdateForm,
+    RegistrationForm,
+    UserSettingsProfileUpdateForm,
+    UserSettingsPasswordUpdateForm
+)
+from core.models import (
+    Book,
+    Category,
+    UserActivityLog
+)
 
 
 def loginView(request):
-    if request.user.is_authenticated:
-        return redirect('core:index-view')
-
     if not request.session.session_key:
         request.session.save()
 
     if request.method == 'POST':
         uniqueVisitorId = request.session.session_key
+        attempts = cache.get(uniqueVisitorId, 0)
 
-        if cache.get(uniqueVisitorId) is not None and cache.get(uniqueVisitorId) > 3:
-            cache.set(uniqueVisitorId, cache.get(uniqueVisitorId), 600)
-
+        if attempts > 3:
+            cache.set(uniqueVisitorId, attempts, 600)
             messages.error(
                 request, 'Your account has been temporarily locked out because of too many failed login attempts.'
             )
@@ -45,35 +53,29 @@ def loginView(request):
         if form.is_valid():
             cache.delete(uniqueVisitorId)
             redirectUrl = request.GET.get('next')
-            if redirectUrl:
-                return redirect(redirectUrl)
-            return redirect('core:index-view')
+            logOperations.log(request, UserActivityLog.Action.LOGIN)
+            return redirect(redirectUrl or 'core:index-view')
 
-        if cache.get(uniqueVisitorId) is None:
-            cache.set(uniqueVisitorId, 1)
-        else:
-            cache.incr(uniqueVisitorId, 1)
+        cache.set(uniqueVisitorId, attempts + 1, 600)
 
     else:
         form = LoginForm(request)
 
     context = {
-        'form': form
+        'form': form,
     }
-    return render(request, 'core/loginView.html', context)
+    return render(request, 'core/login.html', context)
 
 
+@transaction.atomic
 def logoutView(request):
+    logOperations.log(request, UserActivityLog.Action.LOGOUT)
     logout(request)
-
     previousUrl = request.META.get('HTTP_REFERER')
-    if previousUrl:
-        return redirect(previousUrl)
-
-    return redirect('core:index-view')
+    return redirect(previousUrl or 'core:login-view')
 
 
-def registrationView(request):
+def registerView(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
@@ -90,10 +92,10 @@ def registrationView(request):
     context = {
         'form': form
     }
-    return render(request, 'core/registrationView.html', context)
+    return render(request, 'core/register.html', context)
 
 
-def accountActivationRequest(request, base64, token):
+def activateAccountView(request, base64, token):
     try:
         uid = force_str(urlsafe_base64_decode(base64))
         user = User.objects.get(pk=uid)
@@ -104,7 +106,7 @@ def accountActivationRequest(request, base64, token):
 
     if user is not None and passwordResetTokenGenerator.check_token(user, token):
         user.is_active = True
-        user.save()
+        user.save(update_fields=['is_active'])
 
         messages.success(
             request,
@@ -112,27 +114,27 @@ def accountActivationRequest(request, base64, token):
         )
         return redirect('core:login-view')
 
-    return render(request, 'core/linkFailedTemplate.html', status=HTTPStatus.UNAUTHORIZED)
+    return render(request, 'core/activate-failed.html')
 
 
-def passwordChangeRequest(request):
+def forgotPasswordView(request):
     if request.method == 'POST':
         try:
-            user = User.objects.get(username=request.POST['email'])
+            user = User.objects.get(email__exact=request.POST['email'])
         except User.DoesNotExist:
             user = None
 
         if user is not None:
-            emailOperations.sendEmailToChangePassword(request, user)
+            emailOperations.sendEmailToResetPassword(request, user)
 
         messages.info(
-            request, 'Check your email for a password change link.'
+            request, 'Check your email for a password reset link.'
         )
 
-    return render(request, 'core/passwordChangeRequest.html')
+    return render(request, 'core/forgot-password.html')
 
 
-def passwordUpdateRequest(request, base64, token):
+def setPasswordView(request, base64, token):
     try:
         uid = force_str(urlsafe_base64_decode(base64))
         user = User.objects.get(pk=uid)
@@ -155,7 +157,7 @@ def passwordUpdateRequest(request, base64, token):
         'form': form,
     }
 
-    TEMPLATE = 'passwordUpdateForm' if user is not None and verifyToken else 'linkFailedTemplate'
+    TEMPLATE = 'set-password' if user is not None and verifyToken else 'activate-failed'
     return render(request, 'core/{}.html'.format(TEMPLATE), context)
 
 
@@ -170,6 +172,7 @@ class SettingsView(LoginRequiredMixin, View):
             'profile': 'settingsProfile.html',
             'password': 'settingsPassword.html',
             'account': 'settingsAccount.html',
+            'activity': 'settings-activity.html',
         }
         return f'core/{templates[tab]}'
 
@@ -180,6 +183,8 @@ class SettingsView(LoginRequiredMixin, View):
         elif tab == 'password':
             return UserSettingsPasswordUpdateForm(*args)
         elif tab == 'account':
+            return None
+        elif tab == 'activity':
             return None
         raise NotImplemented
 
@@ -215,7 +220,7 @@ def indexView(request):
         'booksBasedOnViewings': bookOperations.booksBasedOnViewings(request),
         'otherUsersFavouriteBooks': bookOperations.otherUsersFavouriteBooks(request),
     }
-    return render(request, 'core/indexView.html', context)
+    return render(request, 'core/index.html', context)
 
 
 def bookListView(request):
@@ -245,9 +250,10 @@ def bookDetailView(request, isbn13):
         'book': book,
         'similarBooks': bookOperations.similarBooks(book),
     }
+    logOperations.log(request, UserActivityLog.Action.VIEW_BOOK, data={'book-isbn13': isbn13, 'book-title': book.title})
     return render(request, 'core/bookDetailView.html', context)
 
 
 @login_required
 def userShelfView(request):
-    return render(request, 'core/userShelfView.html')
+    return render(request, 'core/user-shelf.html')

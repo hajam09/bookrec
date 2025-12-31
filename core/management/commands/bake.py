@@ -1,192 +1,357 @@
 import datetime
 import random
-import threading
+import time
 
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
 from django.utils import timezone
 from faker import Faker
+from tqdm import tqdm
 
-from bookrec.operations import bookOperations
-from core.models import Book, BookReview, Category, Profile
+from core.models import (
+    Book,
+    BookReview,
+    Category,
+    Profile,
+    UserActivityLog
+)
+
+genres = [
+    # Fiction
+    "Action", "Adventure", "Alternate History", "Chick Lit", "Contemporary Romance",
+    "Dark Fantasy", "Detective Fiction", "Crime Fiction", "Dystopian", "Epic Fantasy",
+    "Fairy Tales", "Fantasy", "Gothic Horror", "Historical Fiction", "Historical Mystery",
+    "Historical Romance", "Horror", "Literary Fiction", "Literary Fantasy", "Magical Realism",
+    "Middle Grade", "Mystery", "Mythology", "New Adult", "Paranormal", "Post-Apocalyptic",
+    "Psychological Thriller", "Romance", "Romantic Comedy", "Romantic Suspense", "Science Fiction",
+    "Spy / Espionage", "Steampunk", "Supernatural", "Thriller", "Urban Fantasy", "Western",
+    "Young Adult", "Short Stories", "Epistolary Fiction", "Experimental Fiction", "Picture Books",
+
+    # Non-fiction
+    "Academic Journal", "Art", "Art Theory", "Architecture", "Autobiography", "Memoir",
+    "Biography", "Business", "Economics", "Finance", "Cooking", "Baking", "Food & Drink",
+    "Crafts", "DIY", "Design", "Education", "Teaching", "Encyclopedia", "Reference",
+    "Film", "Music", "Performing Arts", "Theater", "Gardening", "Outdoors", "Nature",
+    "Pets", "Health & Wellness", "Fitness", "Nutrition", "Medicine", "Nursing", "Pharmacy",
+    "Journalism", "Language Learning", "Linguistics", "Law", "Legal Thriller", "Philosophy",
+    "Theology", "Religion", "Spirituality", "Politics", "Sociology", "Psychology",
+    "Science", "Data Science", "Technology", "Programming", "Artificial Intelligence",
+    "Engineering", "Mathematics", "Self-Help", "Personal Development", "Motivational",
+    "Productivity", "Mindfulness", "Travel", "Guidebooks", "True Crime", "Historical Accounts",
+    "Research", "Essays", "Home Improvement", "Fashion", "Beauty",
+
+    # Graphic / Illustrated
+    "Comic Book", "Graphic Novel", "Manga", "Illustrated Books"
+]
 
 
 class Command(BaseCommand):
-    PASSWORD = 'admin'
-    NUMBER_OF_USERS = 40
-    NUMBER_OF_REVIEWS_PER_BOOK = 30
+    NUMBER_OF_BOOKS = 200
+    NUMBER_OF_BOOKS_BATCH = 50
+
+    NUMBER_OF_USERS = 20
+    NUMBER_OF_USERS_BATCH = 5
+
+    NUMBER_OF_REVIEWS = 40
+    NUMBER_OF_REVIEWS_BATCH = 10
+
+    NUMBER_OF_LOGS = 200
+    NUMBER_OF_LOGS_BATCH = 50
 
     def __init__(self):
         super().__init__()
         self.faker = Faker('en_GB')
 
     def handle(self, *args, **kwargs):
-        try:
-            with transaction.atomic():
-                self.downloadBooks()
-                self.bulkCreateUsersAndProfiles()
-                self.bulkCreateBookReviews()
-        except BaseException as e:
-            print('Failed to seed data. Rolled back all the transactions', e)
+        self.seedBooks()
+        self.seedUsers()
+        self.seedReviews()
+        self.seedLogs()
 
-        return
+    def seedBooks(self):
+        start_time = time.time()
+        self.stdout.write("🔹 Starting database reset and book creation...\n")
 
-    def _email(self, first_name, last_name):
-        return f'{first_name}.{last_name}@{self.faker.free_email_domain()}'
-
-    def bulkCreateUsersAndProfiles(self):
-        print(f'Attempting to create {Command.NUMBER_OF_USERS} users and profiles.')
-        Profile.objects.all().delete()
-        User.objects.filter(is_superuser=False).delete()
-
-        USERS = []
-        for i in range(Command.NUMBER_OF_USERS):
-            first_name = self.faker.first_name()
-            last_name = self.faker.last_name()
-            email = self._email(first_name.lower(), last_name.lower())
-
-            user = User()
-            user.first_name = first_name
-            user.last_name = last_name
-            user.email = email
-            user.username = email
-            user.set_password(Command.PASSWORD)
-            USERS.append(user)
-
-        User.objects.bulk_create(USERS)
-
-        allCategory = Category.objects.all()
-        allCategoryCount = allCategory.count()
-
-        PROFILES = []
-        for user in User.objects.all():
-            n = min(random.randint(3, 10), allCategoryCount)
-            randomCategories = allCategory.order_by('?')[:n]
-
-            profile = Profile()
-            profile.user = user
-            profile.favouriteGenres = list(randomCategories.values_list('name', flat=True))
-            PROFILES.append(profile)
-
-        Profile.objects.bulk_create(PROFILES)
-        return
-
-    def bulkCreateBookReviews(self):
-        print(f'Attempting to create {Command.NUMBER_OF_REVIEWS_PER_BOOK} reviews per book.')
-        allUsers = list(User.objects.all().values_list('id', flat=True))
-        BookReview.objects.all().delete()
-
-        for book in Book.objects.all():
-            for user in random.sample(allUsers, Command.NUMBER_OF_REVIEWS_PER_BOOK):
-                bookReview = BookReview()
-                bookReview.book = book
-                bookReview.edited = random.choice([True, False])
-                bookReview.creator_id = user
-                bookReview.comment = self.faker.paragraph()
-                bookReview.rating = random.randint(0, 5)
-                bookReview.createdDateTime = timezone.now() - datetime.timedelta(seconds=random.randint(0, 999999999))
-                bookReview.save()
-
-        for review in BookReview.objects.all():
-            review.likes.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-            review.dislikes.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-
-        bookList = Book.objects.all()
-
-        for book in bookList:
-            book.favouriteRead.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-            book.readingNow.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-            book.toRead.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-            book.haveRead.add(*random.sample(list(allUsers), random.randint(0, len(allUsers))))
-
-        return
-
-    def downloadBooksFromApi(self, books):
-        for book in books:
-            print('Downloading book ' + book)
-            try:
-                bookOperations.googleBooksAPIRequests(book)
-            except Exception as e:
-                print(f'Exception found when attempting to download book: {book}, {e}')
-
-    def downloadBooks(self):
-        print(f'Attempting to download books to the system')
+        # Delete old data
+        self.stdout.write("🗑️ Deleting existing books and categories...")
         Book.objects.all().delete()
-        bookNames = [
-            "A view from the bridge", "Of mice and men", "Zenith", "Harry potter", "To Kill a Mockingbird", "1984",
-            "The Great Gatsby", "Pride and Prejudice", "The Catcher in the Rye", "Animal Farm", "The Lord of the Rings",
-            "Jane Eyre", "The Hobbit", "Brave New World", "The Chronicles of Narnia", "Wuthering Heights",
-            "Lord of the Flies", "The Grapes of Wrath", "Great Expectations", "Catch-22", "Little Women",
-            "The Scarlet Letter", "Moby Dick", "Fahrenheit 451", "A Tale of Two Cities", "The Picture of Dorian Gray",
-            "The Hitchhiker's Guide to the Galaxy", "Gone with the Wind", "Crime and Punishment", "Frankenstein",
-            "Anna Karenina", "One Hundred Years of Solitude", "The Odyssey", "The Bell Jar", "The Brothers Karamazov",
-            "Don Quixote", "The Count of Monte Cristo", "War and Peace", "The Stranger", "Dracula", "The Road",
-            "Les Miserables", "The Sun Also Rises", "Slaughterhouse-Five", "The Old Man and the Sea",
-            "A Clockwork Orange", "Heart of Darkness", "The Canterbury Tales", "Lolita", "The Divine Comedy",
-            "The Stranger Beside Me", "The Shining", "The Secret History", "The Poisonwood Bible", "The Stand",
-            "The Road Less Traveled", "The Handmaid's Tale", "American Gods", "Ender's Game",
-            "The Adventures of Huckleberry Finn", "Alice's Adventures in Wonderland", "The Picture of Dorian Gray",
-            "The Adventures of Sherlock Holmes", "The Time Machine", "Dr. Jekyll and Mr. Hyde", "Oliver Twist",
-            "Treasure Island", "The War of the Worlds", "Gulliver's Travels", "The Jungle Book", "Anne of Green Gables",
-            "Around the World in Eighty Days", "Black Beauty", "A Christmas Carol", "The Wind in the Willows",
-            "Peter Pan", "Sense and Sensibility", "The Adventures of Tom Sawyer", "Mansfield Park",
-            "The Call of the Wild", "White Fang", "The Hound of the Baskervilles", "The Three Musketeers",
-            "Twenty Thousand Leagues Under the Sea", "Robinson Crusoe", "The Swiss Family Robinson",
-            "David Copperfield", "A Journey to the Center of the Earth", "The Phantom of the Opera",
-            "The Strange Case of Dr. Coué", "The Mysterious Affair at Styles", "The Lost World",
-            "The Legend of Sleepy Hollow", "The Last of the Mohicans", "Northanger Abbey", "The Woman in White",
-            "The Portrait of a Lady", "The Turn of the Screw", "The Red Badge of Courage", "The Call of Cthulhu",
-            "The Arabian Nights", "The Island of Dr. Moreau", "The Jungle", "The Moonstone",
-            "The Murders in the Rue Morgue", "The War in the Air", "The Thirty-Nine Steps",
-            "The Wonderful Wizard of Oz", "The Prince and the Pauper", "The Last Man", "The Prince",
-            "The Strange Case of Dr. Jekyll and Mr. Hyde", "The Yellow Wallpaper", "The Art of War",
-            "The Importance of Being Earnest", "The Little Prince", "The Metamorphosis", "The Outsiders", "The Raven",
-            "The Republic", "The Road to Wigan Pier", "The Sound and the Fury", "The Tempest",
-            "The Things They Carried", "The Waste Land", "The Wind-Up Bird Chronicle", "The Woman Warrior",
-            "Things Fall Apart", "Thus Spoke Zarathustra", "Tinker Tailor Soldier Spy", "To the Lighthouse",
-            "Travels with Charley", "Ulysses", "Uncle Tom's Cabin", "Under the Net", "Waiting for Godot", "Walden",
-            "Watchmen", "Where the Sidewalk Ends", "White Noise", "Wide Sargasso Sea", "Winesburg, Ohio",
-            "Winnie-the-Pooh", "Woman Hollering Creek", "Women in Love", "World War Z", "Wuthering Heights",
-            "Zen and the Art of Motorcycle Maintenance", "The Hunger Games", "The Girl with the Dragon Tattoo",
-            "The Da Vinci Code", "The Help", "The Kite Runner", "The Alchemist", "The Girl on the Train", "Gone Girl",
-            "The Fault in Our Stars", "The Girl with the Pearl Earring", "The Notebook", "The Martian",
-            "The Joy Luck Club", "The Secret Life of Bees", "The Lovely Bones", "The Book Thief",
-            "The Time Traveler's Wife", "The Color Purple", "The Pillars of the Earth", "The Night Circus",
-            "The Goldfinch", "The Shadow of the Wind", "The Glass Castle", "The Nightingale",
-            "The Light Between Oceans", "The Immortal Life of Henrietta Lacks", "The Miniaturist", "The Night Manager",
-            "The Nest", "The Snowman", "The Bone Collector", "The Night Stalker", "The Silent Patient", "The Chain",
-            "The Silent Wife", "The Whisper Man", "The Guest List", "The Woman in Cabin 10", "The Girl in the Ice",
-            "The Last Mrs. Parrish", "The Woman in the Window", "The Wife Between Us", "The Flight Attendant",
-            "The Couple Next Door", "The Girl Who Lived", "The Good Daughter", "The Wife", "The Girl Before",
-            "The Wife Stalker", "The Last House Guest", "The Other Woman", "The Wife Upstairs", "The Guest List",
-            "The Silent Wife", "The Dilemma", "The Holdout", "The Wife Between Us", "The Lying Game",
-            "The Wife Upstairs", "The Guest List", "The Wives", "The Girl You Left Behind", "The Wife",
-            "The Girl Before", "The Wife Stalker", "The Housekeeper", "The Other Wife", "The Wife Between Us",
-            "The Night Swim", "The Wife Upstairs", "The Guest List", "The Silent Patient", "The Wife",
-            "The Girl Before", "The Wife Stalker", "The Wife Between Us", "The Guest List", "The Good Girl",
-            "The Wife Upstairs", "The Silent Wife", "The Last Mrs. Parrish", "The Wife", "The Girl Before",
-            "The Wife Stalker", "The Silent Patient", "The Wife Between Us", "The Guest List", "The Girl in the Mirror",
-            "The Wife Upstairs", "The Silent Wife", "The Last Mrs. Parrish", "The Wife", "The Wife Stalker",
-            "The Guest List", "The Girl in the Mirror", "The Silent Patient", "The Wife Between Us",
-            "The Wife Upstairs", "The Girl You Gave Away", "The Wife", "The Wife Stalker", "The Silent Wife",
-            "The Last Mrs. Parrish", "The Guest List", "The Girl in the Mirror", "The Silent Patient",
-            "The Wife Between Us", "The Wife Upstairs",
+        Category.objects.all().delete()
+        self.stdout.write("✅ Deleted old books and categories.\n")
+
+        # Recreate categories
+        self.stdout.write(f"📚 Creating {len(genres)} categories...")
+        categories = [Category(name=genre) for genre in genres]
+        Category.objects.bulk_create(categories)
+        self.stdout.write("✅ Categories created successfully.\n")
+
+        # Creating books with tqdm progress bar
+        self.stdout.write(f"📖 Creating {self.NUMBER_OF_BOOKS} books in batches of {self.NUMBER_OF_BOOKS_BATCH}...")
+        books = []
+        for i in tqdm(range(1, self.NUMBER_OF_BOOKS + 1), desc="Books created", unit="book"):
+            book = Book(
+                title=self.faker.sentence(nb_words=random.randint(1, 5)),
+                authors=[self.faker.name() for _ in range(random.randint(1, 3))],
+                publisher=self.faker.company(),
+                publishedDate=self.faker.date_between(start_date='-30y', end_date='today'),
+                description=self.faker.paragraph(nb_sentences=random.randint(5, 25)),
+                isbn13=self.faker.unique.isbn13().replace("-", ""),
+                categories=random.sample(genres, random.randint(1, 3)),
+                thumbnail="https://dummyimage.com/200x300",  # self.faker.image_url(),
+                selfLink=self.faker.url(),
+                averageRating=round(random.uniform(1, 5), 2),
+                ratingsCount=random.randint(1, 5000),
+            )
+            books.append(book)
+
+            # Bulk create in batches
+            if i % self.NUMBER_OF_BOOKS_BATCH == 0:
+                Book.objects.bulk_create(books, batch_size=self.NUMBER_OF_BOOKS_BATCH)
+                books = []
+
+        # Create any remaining books
+        if books:
+            Book.objects.bulk_create(books, batch_size=len(books))
+
+        elapsed_time = time.time() - start_time
+        self.stdout.write(f"\n🎉 Finished creating {self.NUMBER_OF_BOOKS} books in {elapsed_time:.2f} seconds.")
+
+    def seedUsers(self):
+        # Delete existing non-superuser users and profiles
+        Profile.objects.filter(user__is_superuser=False).delete()
+        User.objects.filter(is_superuser=False).delete()
+        self.stdout.write("🗑️ Deleted old users and profiles.\n")
+        self.stdout.write(f"📄 Creating {self.NUMBER_OF_USERS} users and profiles...\n")
+
+        hashed_password = make_password("admin")
+
+        # ---- Create Users ----
+        users_to_create = []
+        pbar_users = tqdm(total=self.NUMBER_OF_USERS, desc="Creating users", unit="user")
+
+        for _ in range(self.NUMBER_OF_USERS):
+            first_name = self.faker.unique.first_name()
+            last_name = self.faker.unique.last_name()
+            email = f'{first_name}.{last_name}@{self.faker.free_email_domain()}'
+
+            user = User(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                username=email,
+                password=hashed_password
+            )
+            users_to_create.append(user)
+
+            # Bulk insert in batches
+            if len(users_to_create) >= self.NUMBER_OF_USERS_BATCH:
+                User.objects.bulk_create(users_to_create, batch_size=self.NUMBER_OF_USERS_BATCH)
+                pbar_users.update(len(users_to_create))
+                users_to_create = []
+
+        # Insert remaining users
+        if users_to_create:
+            User.objects.bulk_create(users_to_create, batch_size=len(users_to_create))
+            pbar_users.update(len(users_to_create))
+        pbar_users.close()
+
+        # ---- Create Profiles ----
+        profiles_to_create = []
+        new_users = User.objects.filter(is_superuser=False).order_by('id')
+        pbar_profiles = tqdm(total=new_users.count(), desc="Creating profiles", unit="profile")
+
+        for user in new_users:
+            favourite_genres = random.sample(genres, random.randint(2, 5))
+            profile = Profile(user=user, favouriteGenres=favourite_genres)
+            profiles_to_create.append(profile)
+
+            if len(profiles_to_create) >= self.NUMBER_OF_USERS_BATCH:
+                Profile.objects.bulk_create(profiles_to_create, batch_size=self.NUMBER_OF_USERS_BATCH)
+                pbar_profiles.update(len(profiles_to_create))
+                profiles_to_create = []
+
+        # Insert remaining profiles
+        if profiles_to_create:
+            Profile.objects.bulk_create(profiles_to_create, batch_size=len(profiles_to_create))
+            pbar_profiles.update(len(profiles_to_create))
+        pbar_profiles.close()
+
+        self.stdout.write(f"\n✅ Successfully created {self.NUMBER_OF_USERS} users with profiles.")
+
+    def seedReviews(self):
+        self.stdout.write("🗑️ Deleting existing reviews...")
+        BookReview.objects.all().delete()
+        self.stdout.write("✅ Done deleting reviews.\n")
+
+        users = list(User.objects.all().values_list('id', flat=True))
+        books = list(Book.objects.all())
+        total_reviews_created = 0
+
+        self.stdout.write("📄 Generating reviews for books...\n")
+        book_reviews_to_create = []
+
+        for book in tqdm(books, desc="Books processed", unit="book"):
+            num_reviews = random.randint(40, 61)
+            selected_users = random.sample(users, min(num_reviews, len(users)))
+
+            for user_id in selected_users:
+                review = BookReview(
+                    book=book,
+                    creator_id=user_id,
+                    edited=random.choice([True, False]),
+                    comment=self.faker.paragraph(),
+                    rating=random.randint(0, 5),
+                    createdDateTime=timezone.make_aware(
+                        datetime.datetime.combine(
+                            self.faker.date_between(start_date='-5y', end_date='today'),
+                            datetime.time.min  # or random time if you want
+                        ),
+                        timezone.get_current_timezone()
+                    )
+                )
+                book_reviews_to_create.append(review)
+
+                if len(book_reviews_to_create) >= self.NUMBER_OF_REVIEWS_BATCH:
+                    BookReview.objects.bulk_create(book_reviews_to_create, batch_size=self.NUMBER_OF_REVIEWS_BATCH)
+                    total_reviews_created += len(book_reviews_to_create)
+                    book_reviews_to_create = []
+
+        # Create remaining reviews
+        if book_reviews_to_create:
+            BookReview.objects.bulk_create(book_reviews_to_create)
+            total_reviews_created += len(book_reviews_to_create)
+
+        self.stdout.write(f"✅ Created {total_reviews_created} reviews.\n")
+
+        # ---- Bulk add likes and dislikes ----
+        self.stdout.write("📄 Adding likes and dislikes to reviews...\n")
+        all_reviews = list(BookReview.objects.all())
+        through_likes = BookReview.likes.through
+        through_dislikes = BookReview.dislikes.through
+        likes_to_create = []
+        dislikes_to_create = []
+
+        for review in tqdm(all_reviews, desc="Reviews processed", unit="review"):
+            like_ids = random.sample(users, random.randint(0, len(users)))
+            dislike_ids = random.sample(users, random.randint(0, len(users)))
+
+            for uid in like_ids:
+                likes_to_create.append(through_likes(bookreview_id=review.id, user_id=uid))
+            for uid in dislike_ids:
+                dislikes_to_create.append(through_dislikes(bookreview_id=review.id, user_id=uid))
+
+            # Bulk insert in batches
+            if len(likes_to_create) >= self.NUMBER_OF_REVIEWS_BATCH:
+                through_likes.objects.bulk_create(likes_to_create, batch_size=self.NUMBER_OF_REVIEWS_BATCH)
+                likes_to_create = []
+            if len(dislikes_to_create) >= self.NUMBER_OF_REVIEWS_BATCH:
+                through_dislikes.objects.bulk_create(dislikes_to_create, batch_size=self.NUMBER_OF_REVIEWS_BATCH)
+                dislikes_to_create = []
+
+        if likes_to_create:
+            through_likes.objects.bulk_create(likes_to_create)
+        if dislikes_to_create:
+            through_dislikes.objects.bulk_create(dislikes_to_create)
+
+        self.stdout.write("✅ Likes and dislikes added.\n")
+
+        # ---- Bulk add ManyToMany for book lists ----
+        self.stdout.write("📄 Updating user book lists...\n")
+        book_relations = [
+            ('favouriteRead', Book.favouriteRead.through),
+            ('readingNow', Book.readingNow.through),
+            ('toRead', Book.toRead.through),
+            ('haveRead', Book.haveRead.through)
         ]
 
-        print(f'Attempting to download {len(bookNames)} books to the system.')
+        for book in tqdm(books, desc="Books processed", unit="book"):
+            for field_name, through_model in book_relations:
+                user_ids = random.sample(users, random.randint(0, len(users)))
+                m2m_bulk = [through_model(book_id=book.id, user_id=uid) for uid in user_ids]
+                if m2m_bulk:
+                    through_model.objects.bulk_create(m2m_bulk, batch_size=self.NUMBER_OF_REVIEWS_BATCH,
+                                                      ignore_conflicts=True)
 
-        NUMBER_OF_THREADS = 4
-        chunks = [bookNames[i::NUMBER_OF_THREADS] for i in range(NUMBER_OF_THREADS)]
+        self.stdout.write("\n✅ Finished populating BookReviews and all relations.")
 
-        threads = []
-        for chunk in chunks:
-            thread = threading.Thread(target=self.downloadBooksFromApi, args=(chunk,))
-            threads.append(thread)
-            thread.start()
+    def seedLogs(self):
+        start_time = time.time()
+        self.stdout.write("🗑️ Deleting existing user activity logs...")
+        UserActivityLog.objects.all().delete()
+        self.stdout.write("✅ Deleted old logs.\n")
 
-        for thread in threads:
-            thread.join()
+        users = list(User.objects.all())
+        books = list(Book.objects.only("isbn13", "title"))
+        actions = list(UserActivityLog.Action)
+        book_data_actions = {
+            UserActivityLog.Action.EDIT_COMMENT,
+            UserActivityLog.Action.ADD_COMMENT,
+            UserActivityLog.Action.DELETE_COMMENT,
+            UserActivityLog.Action.ADD_TO_FAVOURITES,
+            UserActivityLog.Action.REMOVE_FROM_FAVOURITES,
+            UserActivityLog.Action.ADD_TO_READING_NOW,
+            UserActivityLog.Action.REMOVE_FROM_READING_NOW,
+            UserActivityLog.Action.ADD_TO_TO_READ,
+            UserActivityLog.Action.REMOVE_FROM_TO_READ,
+            UserActivityLog.Action.ADD_TO_HAVE_READ,
+            UserActivityLog.Action.REMOVE_FROM_HAVE_READ,
+            UserActivityLog.Action.ADD_LIKE_TO_COMMENT,
+            UserActivityLog.Action.REMOVE_LIKE_FROM_COMMENT,
+            UserActivityLog.Action.ADD_DISLIKE_TO_COMMENT,
+            UserActivityLog.Action.REMOVE_DISLIKE_FROM_COMMENT,
+            UserActivityLog.Action.VIEW_BOOK,
+        }
 
-        print("All books downloaded successfully.")
-        return
+        self.stdout.write(
+            f"📄 Creating {self.NUMBER_OF_LOGS} activity logs per user "
+            f"({len(users) * self.NUMBER_OF_LOGS} total)...\n"
+        )
+
+        logs_to_create = []
+        total_logs = len(users) * self.NUMBER_OF_LOGS
+        pbar = tqdm(total=total_logs, desc="Creating activity logs", unit="log")
+
+        for user in users:
+            for _ in range(self.NUMBER_OF_LOGS):
+                action = random.choice(actions)
+                data = {}
+
+                if action in book_data_actions and books:
+                    book = random.choice(books)
+                    data = {
+                        "book-isbn13": book.isbn13,
+                        "book-title": book.title,
+                    }
+
+                start_date = timezone.now() - datetime.timedelta(days=random.randint(365 * 2, 365 * 5))
+                random_seconds = random.randint(0, 24 * 60 * 60 - 1)
+
+                logs_to_create.append(
+                    UserActivityLog(
+                        user=user,
+                        action=action,
+                        ipAddress=self.faker.ipv4(),
+                        userAgent=self.faker.user_agent(),
+                        data=data,
+                        timeStamp=start_date + datetime.timedelta(seconds=random_seconds)
+                    )
+                )
+
+                if len(logs_to_create) >= self.NUMBER_OF_LOGS_BATCH:
+                    UserActivityLog.objects.bulk_create(
+                        logs_to_create,
+                        batch_size=self.NUMBER_OF_LOGS_BATCH,
+                    )
+                    pbar.update(len(logs_to_create))
+                    logs_to_create = []
+
+        if logs_to_create:
+            UserActivityLog.objects.bulk_create(logs_to_create, batch_size=len(logs_to_create))
+            pbar.update(len(logs_to_create))
+
+        pbar.close()
+        elapsed_time = time.time() - start_time
+        self.stdout.write(
+            f"\n✅ Successfully created {total_logs} user activity logs "
+            f"in {elapsed_time:.2f} seconds."
+        )

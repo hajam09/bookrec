@@ -96,6 +96,48 @@
         return cookieValue;
     }
 
+    function buildCarousel(books, _carouselContent, bookCarousel) {
+        if (books === [])
+            return;
+
+        const booksPerSlide = 4;
+        const slideInterval = 3000;
+
+        const carouselContent = document.getElementById(_carouselContent);
+
+        for (let i = 0; i < books.length; i += booksPerSlide) {
+            const carouselItem = document.createElement("div");
+            carouselItem.className = "carousel-item" + (i === 0 ? " active" : "");
+
+            const row = document.createElement("div");
+            row.className = "row no-gutters";
+
+            const slideBooks = books.slice(i, i + booksPerSlide);
+            slideBooks.forEach(book => {
+                const col = document.createElement("div");
+                col.className = `col-${12 / booksPerSlide}`;
+
+                col.innerHTML = `
+                    <div class="book-card text-center">
+                        <a style='cursor: pointer;' href='${book.url}'>
+                            <img src="${book.thumbnail}" alt="${book.title}" style="height: 300px; width: 200px;">
+                            <h6 class="mt-2">${book.title}</h6>
+                         </a>
+                    </div>
+                  `;
+
+                row.appendChild(col);
+            });
+
+            carouselItem.appendChild(row);
+            carouselContent.appendChild(carouselItem);
+        }
+
+        $('#' + bookCarousel).carousel({
+            interval: slideInterval
+        });
+    }
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
         integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"

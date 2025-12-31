@@ -62,6 +62,26 @@
             padding: 0 13px;
             vertical-align: top;
         }
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 60px;
+        }
+
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            background-color: #007bff;
+            border-radius: 50%;
+            background-size: 60% 60%;
+            width: 30px;
+            height: 30px;
+            opacity: 1;
+        }
+
+        /* Hover effect */
+        .carousel-control-prev-icon:hover,
+        .carousel-control-next-icon:hover {
+            background-color: #0056b3;
+        }
     </style>
     <div id='div-id-book-container'></div>
 
@@ -82,7 +102,7 @@
             }
 
             fetchUserBookDetail = () => {
-                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                fetch('{% url 'core:userReadingInfoApiVersion1' isbn13=book.isbn13 %}', {
                     method: 'GET',
                 }).then((response) => response.json())
                     .then((response) => {
@@ -98,7 +118,7 @@
             }
 
             updateUserBookDetail = (field, action) => {
-                fetch('{% url 'core:userReadingInfoApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                fetch('{% url 'core:userReadingInfoApiVersion1' isbn13=book.isbn13 %}', {
                     method: 'PUT',
                     headers: {
                         'Content-Encoding': 'gzip',
@@ -273,60 +293,29 @@
         class SimilarBooksComponent extends React.Component {
             constructor(props) {
                 super(props);
-                let bookList = [];
-                {% for books in similarBooks %}
-                    bookList.push({
-                        title: '{{ books.title }}',
-                        thumbnail: '{{ books.thumbnail }}',
-                        url: '{{ books.getUrl }}',
-                    });
-                {% endfor %}
-
                 this.state = {
-                    books: bookList
+                    books: {{ similarBooks|safe }},
                 }
             }
 
             componentDidMount = () => {
-                new Sliderm('#similarBooks-slider', {
-                    arrow: true,
-                    pagination: true,
-                    grouping: true,
-                    loop: true,
-                    preview: false,
-                    columns: 6,
-                    duration: 1000,
-                    spacing: 10,
-                    align: 'center',
-                    breakpoint: true,
-                    autoplay: true,
-                });
+                buildCarousel(this.state.books, "similarBooksContent", "similarBooksCarousel");
             }
 
             render() {
                 const fontSize = {fontWeight: 'bold', fontSize: '20px'};
-                const bookCursor = {cursor: 'pointer'};
-                const bookThumbnailSize = {height: '200px', width: '200px'};
                 return (
                     <span>
                         <p style={fontSize} className='text-left'>Similar Book's...</p>
-                        <div id='similarBooks-slider' className='sliderm'>
-                            <div className='sliderm__slider'>
-                                <div className='sliderm__slides'>
-                                    {this.state.books.map((book) =>
-                                        <div className='sliderm__slide'>
-                                            <a style={bookCursor} href={book.url}>
-                                                <p className='lead img-responsive'>
-                                                    <img src={'https://dummyimage.com/200x200'}
-                                                         style={bookThumbnailSize} alt='No Image'></img>
-                                                    <p className='text-center'>{
-                                                        book.title.length > 20 ? book.title.slice(0, 20 - 1) + '...' : book.title
-                                                    }</p></p>
-                                            </a>
-                                        </div>)
-                                    }
-                                </div>
-                            </div>
+                        <div id="similarBooksCarousel" className="carousel slide mb-5" data-ride="carousel">
+                            <div className="carousel-inner" id="similarBooksContent"></div>
+                            <a className="carousel-control-prev" href="#similarBooksCarousel" role="button" data-slide="prev">
+                                <span className="carousel-control-prev-icon"></span>
+                            </a>
+                            <a className="carousel-control-next" href="#similarBooksCarousel" role="button" data-slide="next">
+                                <span className="carousel-control-next-icon"></span>
+                            </a>
+                            <ol className="carousel-indicators" id="similarBooksIndicators"></ol>
                         </div>
                     </span>
                 )
@@ -343,7 +332,7 @@
             }
 
             voteComment = (id, direction) => {
-                fetch('{% url 'core:bookReviewVotingActionApiEventVersion1Component' %}', {
+                fetch('{% url 'core:bookReviewVotingApiVersion1' %}', {
                     method: 'PUT',
                     headers: {
                         'Content-Encoding': 'gzip',
@@ -373,7 +362,7 @@
 
             updateReviewComment = () => {
                 if (this.refs.refCommentTextAreaUpdate.value.trim().length !== 0) {
-                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    fetch('{% url 'core:bookReviewActionApiVersion1' isbn13=book.isbn13 %}', {
                         method: 'PUT',
                         headers: {
                             'Content-Encoding': 'gzip',
@@ -397,7 +386,7 @@
 
             deleteComment = () => {
                 if (confirm('Are you sure?')) {
-                    fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                    fetch('{% url 'core:bookReviewActionApiVersion1' isbn13=book.isbn13 %}', {
                         method: 'DELETE',
                         headers: {
                             'Content-Encoding': 'gzip',
@@ -524,7 +513,7 @@
 
             fetchBookComment = () => {
                 const sortCommentBy = document.getElementById('review-sort-by').value
-                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}' + '?sort-by=' + sortCommentBy + '&page=' + this.state.page, {
+                fetch('{% url 'core:bookReviewActionApiVersion1' isbn13=book.isbn13 %}' + '?sort-by=' + sortCommentBy + '&page=' + this.state.page, {
                     method: 'GET',
                 }).then((response) => response.json())
                     .then((response) => {
@@ -538,7 +527,7 @@
             }
 
             submitBookComment = () => {
-                fetch('{% url 'core:bookReviewActionApiEventVersion1Component' isbn13=book.isbn13 %}', {
+                fetch('{% url 'core:bookReviewActionApiVersion1' isbn13=book.isbn13 %}', {
                     method: 'POST',
                     headers: {
                         'Content-Encoding': 'gzip',
@@ -711,7 +700,7 @@
                         <BookComponent/>
                         <div className='w-75 p-4'></div>
                         <SimilarBooksComponent/>
-                        <div className='w-75 p-4'></div>
+                        <div className='w-75'></div>
                         <CommentComponent/>
                     </div>
                 );

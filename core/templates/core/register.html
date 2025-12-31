@@ -23,8 +23,9 @@
                                 <a href='#' target='_blank'>Privacy Policy</a>
                             </p>
                             </span>
-                            <div class='small text-center'>Already have an account? <a
-                                    href='{% url 'core:login-view' %}'>Sign in</a></div>
+                            <div class='small text-center'>
+                                Already have an account? <a href='{% url 'core:login-view' %}'>Sign in</a>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -34,7 +35,7 @@
     <script>
         $(document).ready(function () {
             $('.item-selector').select2({
-                placeholder: 'Favourite Genres',
+                placeholder: '  Favourite Genres',
                 allowClear: true,
             });
         });

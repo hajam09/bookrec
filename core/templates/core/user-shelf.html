@@ -47,7 +47,7 @@
             }
 
             fetchBooksFromServer = (shelfName) => {
-                fetch('{% url 'core:userShelfApiEventVersion1Component' %}' + '?shelf=' + shelfName, {
+                fetch('{% url 'core:userShelfApiVersion1' %}' + '?shelf=' + shelfName, {
                     method: 'GET',
                 }).then((response) => response.json())
                     .then((response) => {
@@ -77,7 +77,7 @@
             }
 
             removeBookFromShelf = (isbn13, shelfKey) => {
-                fetch('/api/v1/userReadingInfoApiEventVersion1Component/' + isbn13 + '/', {
+                fetch('/api/v1/userReadingInfoApiVersion1/' + isbn13 + '/', {
                     method: 'PUT',
                     headers: {
                         'Content-Encoding': 'gzip',

@@ -5,8 +5,15 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from bookrec.operations import generalOperations
-from core.models import Category, Profile
+from bookrec.operations import (
+    generalOperations,
+    logOperations
+)
+from core.models import (
+    Category,
+    Profile,
+    UserActivityLog
+)
 
 
 class BaseUserAndProfileForm(forms.ModelForm):
@@ -242,6 +249,7 @@ class UserSettingsProfileUpdateForm(BaseUserAndProfileForm):
         self.request.user.save(update_fields=['first_name', 'last_name'])
         self.request.user.profile.save(update_fields=['favouriteGenres'])
         messages.success(self.request, 'Profile update successfully.')
+        logOperations.log(self.request, UserActivityLog.Action.UPDATE_PROFILE)
 
 
 class UserSettingsPasswordUpdateForm(forms.Form):
@@ -299,6 +307,7 @@ class UserSettingsPasswordUpdateForm(forms.Form):
         newPassword = self.cleaned_data.get('newPassword')
         self.user.set_password(newPassword)
         self.user.save()
+        logOperations.log(self.request, UserActivityLog.Action.UPDATE_PASSWORD)
 
     def reAuthenticate(self):
         newPassword = self.cleaned_data.get('newPassword')
