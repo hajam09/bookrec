@@ -1,7 +1,6 @@
 from http import HTTPStatus
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count, FloatField, Func, F
 from django.db.models import Exists, OuterRef
@@ -13,7 +12,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookrec.operations import (
-    bookOperations,
     emailOperations,
     generalOperations,
     logOperations
@@ -26,10 +24,8 @@ from core.models import (
 )
 from core.serializers import (
     BookReviewSerializerV1,
-    BookReviewSerializerV2,
     BookReviewSerializerV3,
     BookReviewSerializerV4,
-    BookSerializerV1,
     BookSerializerV3,
     UserAndProfileSerializer,
     UserActivityLogSerializer,
@@ -210,51 +206,6 @@ class BookReviewActionApiVersion1(APIView):
         response = {
             'success': True,
         }
-        return Response(response, status=HTTPStatus.OK)
-
-
-class UserShelfApiVersion1(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        shelf = request.GET.get('shelf')
-        cachedData = cache.get(f'user-shelf-{shelf}-{self.request.user.id}')
-
-        if cachedData:
-            data = cachedData
-        elif shelf == 'ratedAndReviewed':
-            reviews = BookReview.objects.filter(creator=self.request.user).select_related('book')
-            data = BookReviewSerializerV2(reviews, many=True).data
-        elif shelf == 'recentlyViewed':
-            history = request.session.get('history', [])
-            books = Book.objects.filter(isbn13__in=history)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'favouriteRead':
-            books = Book.objects.filter(favouriteRead=self.request.user)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'readingNow':
-            books = Book.objects.filter(readingNow=self.request.user)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'toRead':
-            books = Book.objects.filter(toRead=self.request.user)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'haveRead':
-            books = Book.objects.filter(haveRead=self.request.user)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'recommendedBooks':
-            books = bookOperations.booksBasedOnRating(self.request)
-            data = BookSerializerV1(books, many=True).data
-        elif shelf == 'favouriteGenreBooks':
-            books = bookOperations.booksBasedOnFavouriteGenres(self.request)
-            data = BookSerializerV1(books, many=True).data
-        else:
-            raise Exception(f'Unknown shelf: {shelf}')
-        response = {
-            'success': True,
-            'data': data,
-        }
-        if not cachedData:
-            cache.set(f'user-shelf-{shelf}-{self.request.user.id}', data, timeout=30)
         return Response(response, status=HTTPStatus.OK)
 
 

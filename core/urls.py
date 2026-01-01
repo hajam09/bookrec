@@ -8,7 +8,6 @@ from core.api import (
     BookReviewActionApiVersion1,
     BookReviewVotingApiVersion1,
     UserActivityApiVersion1,
-    UserShelfApiVersion1,
     UserReadingInfoApiVersion1,
 )
 from core.views import (
@@ -17,7 +16,9 @@ from core.views import (
     registerView,
     activateAccountView,
     forgotPasswordView,
-    setPasswordView
+    setPasswordView,
+
+    userShelfView,
 )
 
 app_name = 'core'
@@ -36,7 +37,7 @@ coreUrls = [
     path('', views.indexView, name='index-view'),
     path('book-list', views.bookListView, name='book-list-view'),
     path('book/<int:isbn13>/', views.bookDetailView, name='book-detail-view'),
-    path('user-shelf/', views.userShelfView, name='user-shelf-view'),
+    path('user-shelf/', userShelfView, name='user-shelf-view'),
     path('settings/', views.SettingsView.as_view(), name='settings-view'),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('', include(router.urls)),
@@ -70,11 +71,6 @@ coreApiUrls = [
         'api/v1/userActivityApiVersion1',
         UserActivityApiVersion1.as_view(),
         name='userActivityApiVersion1'
-    ),
-    path(
-        'api/v1/userShelfApiVersion1',
-        UserShelfApiVersion1.as_view(),
-        name='userShelfApiVersion1'
     ),
     path(
         'api/v1/userReadingInfoApiVersion1/<slug:isbn13>/',
