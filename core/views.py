@@ -5,7 +5,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -28,6 +30,7 @@ from core.forms import (
 )
 from core.models import (
     Book,
+    BookReview,
     Category,
     UserActivityLog
 )
@@ -256,4 +259,55 @@ def bookDetailView(request, isbn13):
 
 @login_required
 def userShelfView(request):
-    return render(request, 'core/user-shelf.html')
+    shelves = {
+        'ratedAndReviewed',
+        'recentlyViewed',
+        'favouriteRead',
+        'readingNow',
+        'toRead',
+        'haveRead',
+        'recommendedBooks',
+        'favouriteGenreBooks'
+    }
+
+    tab = request.GET.get('tab')
+    page = request.GET.get('page')
+
+    if tab not in shelves:
+        params = request.GET.copy()
+        params['tab'] = 'ratedAndReviewed'
+        return redirect(f"{request.path}?{params.urlencode()}")
+
+    if tab in ['favouriteRead', 'readingNow', 'toRead', 'haveRead']:
+        records = Book.objects.filter(**{tab: request.user})
+    elif tab in ['recentlyViewed']:
+        records = Book.objects.filter(isbn13__in=request.session.get('history', []))
+    elif tab in ['recommendedBooks']:
+        records = bookOperations.booksBasedOnRating(request)
+    elif tab in ['favouriteGenreBooks']:
+        records = bookOperations.booksBasedOnFavouriteGenres(request)
+    elif tab in ['ratedAndReviewed']:
+        records = BookReview.objects.filter(creator=request.user).select_related('book')
+    else:
+        raise Exception('Invalid tab')
+
+    query = request.GET.get('query')
+    if query:
+        searchFields = {
+            Book: ['title', 'isbn13', 'categories'],
+            BookReview: ['comment', 'book__title', 'book__isbn13', 'book__categories']
+        }.get(records.model, [])
+        q = Q()
+        for field in searchFields:
+            q |= Q(**{f'{field}__icontains': query})
+        records = records.filter(q).distinct()
+
+    paginator = Paginator(records, 20)
+
+    try:
+        records = paginator.page(page)
+    except PageNotAnInteger:
+        records = paginator.page(1)
+    except EmptyPage:
+        records = paginator.page(paginator.num_pages)
+    return render(request, 'core/user-shelf.html', {'records': records})

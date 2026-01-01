@@ -71,7 +71,11 @@
                             this.setState({
                                 activities: this.state.activities.concat(response.results.activities),
                                 hasMore: response.next !== null
-                            });
+                            }, () => {
+                                if (response.results.activities.length !== 0 && this.state.page !== 1) {
+                                    window.scrollTo(0, document.body.scrollHeight);
+                                }
+                            })
                         }
                     })
             }

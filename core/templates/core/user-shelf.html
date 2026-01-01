@@ -1,62 +1,41 @@
 {% extends 'core/base.html' %}
+{% load templateTags %}
 {% load static %}
 {% block content %}
 
     <div id='div-id-user-shelf-container'></div>
 
+    {% paginationComponent request records %}
+
     <script type='text/babel'>
-        class BaseShelfComponent extends React.Component {
+
+        class Tabs {
+            constructor(name, description, url, columns, component) {
+                this.name = name;
+                this.description = description;
+                this.url = url;
+                this.columns = columns;
+                this.component = component;
+            }
+
+            isActive() {
+                const params = new URLSearchParams(window.location.search);
+                const tab = params.get('tab');
+                return tab === this.url;
+            }
+        }
+
+        class BaseTableComponent extends React.Component {
             constructor(props) {
                 super(props);
 
                 this.state = {
-                    rows: [],
-                    searchedRows: [],
-                    refBookSearchFilter: '',
-                    style: {
-                        whiteSpaceNoWrap: {whiteSpace: 'nowrap'}
-                    }
+                    style: {whiteSpaceNoWrap: {whiteSpace: 'nowrap'}}
                 }
-            }
-
-            getTableName = () => {
-                // noop
             }
 
             getTableHeader = () => {
-                // noop
-                return [];
-            }
-
-            handleTableSearch = () => {
-                if (this.refs.refBookSearchFilter.value.trim().length !== 0) {
-                    const filteredBooks = this.filterBooks(this.state.rows, this.refs.refBookSearchFilter.value);
-                    this.setState({
-                        searchedRows: filteredBooks,
-                        refBookSearchFilter: this.refs.refBookSearchFilter.value.trim()
-                    });
-                } else {
-                    this.setState({
-                        searchedRows: this.state.rows
-                    });
-                }
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                // noop
-            }
-
-            fetchBooksFromServer = (shelfName) => {
-                fetch('{% url 'core:userShelfApiVersion1' %}' + '?shelf=' + shelfName, {
-                    method: 'GET',
-                }).then((response) => response.json())
-                    .then((response) => {
-                        if (response.success) {
-                            this.setState({
-                                rows: response.data,
-                            });
-                        }
-                    })
+                return this.props.tab.columns;
             }
 
             truncate = (str, n) => {
@@ -89,72 +68,51 @@
                 }).then((response) => response.json())
                     .then((response) => {
                         if (response.success) {
-                            this.fetchBooksFromServer(shelfKey);
+                            window.location.reload();
                         }
                     })
             }
 
-            filterBooks = (list, searchTerm) => {
-                searchTerm = searchTerm.toLowerCase();
-                return list.filter(book => {
-                    const titleMatch = book.title.toLowerCase().includes(searchTerm);
-                    const categoriesMatch = book.categories.some(category => category.toLowerCase().includes(searchTerm));
-                    return titleMatch || categoriesMatch;
-                });
-            }
-
             render = () => {
                 return (
-                    <span>
-                        <input className='form-control' type='text' onKeyUp={this.handleTableSearch}
-                               ref='refBookSearchFilter'
-                               placeholder='Search for something in the table...'></input>
-                        <br></br>
-                        <h5>{this.getTableName()}</h5>
-                        <br></br>
-                        <table className='table'>
-                            <thead className='thead-dark'>
-                            <tr>
-                                {this.getTableHeader().map((header, i) => <th scope='col' key={i}>{header}</th>)}
-                            </tr>
-                            </thead>
-                            <tbody>
-                                {this.state.refBookSearchFilter.trim().length !== 0 ?
-                                    this.state.searchedRows.map((row, i) => this.cleanAndHandleRow(row, i))
-                                    : this.state.rows.map((row, i) => this.cleanAndHandleRow(row, i))}
-                            </tbody>
-                        </table>
-                    </span>
+                    <table className='table'>
+                        <thead className='thead-dark'>
+                        <tr>
+                            {this.getTableHeader().map((header, i) => <th scope='col' key={i}>{header}</th>)}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {this.getTableRows()}
+                        </tbody>
+                    </table>
                 );
             }
         }
 
-        class RatedAndReviewedBooksComponent extends BaseShelfComponent {
+        class RatedAndReviewedBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Rated and reviewed books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.book.title }}',
+                        isbn13: '{{ record.book.isbn13 }}',
+                        categories: JSON.parse('{{ record.book.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.rating }}',
+                        comment: '{{ record.comment }}',
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Your rating', 'Your comment'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('ratedAndReviewed');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
                             {this.renderAverageRatingStar(parseFloat(row.rating))}
@@ -163,7 +121,7 @@
                             {this.truncate(row.comment, 50)}
                         </td>
                     </tr>
-                );
+                ));
             }
 
             render() {
@@ -171,306 +129,247 @@
             }
         }
 
-        class RecentlyViewedBooksComponent extends BaseShelfComponent {
+        class RecentlyViewedBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Recently viewed books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('recentlyViewed');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class FavouriteReadBooksComponent extends BaseShelfComponent {
+        class FavouriteReadBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Favourite read books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating', 'Action'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('favouriteRead');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                         <td>
-                            <button type="button" className="btn btn-danger btn-sm"
-                                    onClick={() => this.removeBookFromShelf(row.isbn13, 'favouriteRead')}>Remove
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => this.removeBookFromShelf(row.isbn13, 'favouriteRead')}>
+                                Remove
                             </button>
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class ReadingNowBooksComponent extends BaseShelfComponent {
+        class ReadingNowBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Reading now books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating', 'Action'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('readingNow');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                         <td>
-                            <button type="button" className="btn btn-danger btn-sm"
-                                    onClick={() => this.removeBookFromShelf(row.isbn13, 'readingNow')}>Remove
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => this.removeBookFromShelf(row.isbn13, 'readingNow')}>
+                                Remove
                             </button>
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class ToReadBooksComponent extends BaseShelfComponent {
+        class ToReadBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'To read books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating', 'Action'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('toRead');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                         <td>
-                            <button type="button" className="btn btn-danger btn-sm"
-                                    onClick={() => this.removeBookFromShelf(row.isbn13, 'toRead')}>Remove
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => this.removeBookFromShelf(row.isbn13, 'toRead')}>
+                                Remove
                             </button>
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class HaveReadBooksComponent extends BaseShelfComponent {
+        class HaveReadBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Have read books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating', 'Action'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('haveRead');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                         <td>
-                            <button type="button" className="btn btn-danger btn-sm"
-                                    onClick={() => this.removeBookFromShelf(row.isbn13, 'haveRead')}>Remove
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => this.removeBookFromShelf(row.isbn13, 'haveRead')}>
+                                Remove
                             </button>
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class RecommendedBooksComponent extends BaseShelfComponent {
+        class RecommendedBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Recommended books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('recommendedBooks');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
+                ));
             }
         }
 
-        class FavouriteGenreBooksComponent extends BaseShelfComponent {
+        class FavouriteGenreBooksTable extends BaseTableComponent {
             constructor(props) {
                 super(props);
             }
 
-            getTableName = () => {
-                return 'Favourite genre books';
-            }
+            getTableRows() {
+                let rows = [];
+                {% for record in records %}
+                    rows.push({
+                        title: '{{ record.title }}',
+                        isbn13: '{{ record.isbn13 }}',
+                        categories: JSON.parse('{{ record.categories|escapejs }}'.replace(/'/g, '"')),
+                        rating: '{{ record.averageRating }}'
+                    });
+                {% endfor %}
 
-            getTableHeader = () => {
-                return ['Book', 'Categories', 'Average rating'];
-            }
-
-            componentDidMount = () => {
-                this.fetchBooksFromServer('favouriteGenreBooks');
-            }
-
-            cleanAndHandleRow = (row, i) => {
-                const categoriesAsString = row.categories.join(', ');
-                return (
+                return rows.map((row, i) => (
                     <tr key={i}>
                         <td data-toggle='tooltip' data-placement='top' title={row.title}>
                             <a href={`/book/${row.isbn13}`}> {this.truncate(row.title, 40)} </a>
                         </td>
-                        <td data-toggle='tooltip' data-placement='top' title={categoriesAsString}>
-                            {this.truncate(categoriesAsString, 25)}
+                        <td data-toggle='tooltip' data-placement='top' title={row.categories.join(', ')}>
+                            {this.truncate(row.categories.join(', '), 25)}
                         </td>
                         <td style={this.state.style.whiteSpaceNoWrap}>
-                            {this.renderAverageRatingStar(parseFloat(row.averageRating))}
+                            {this.renderAverageRatingStar(parseFloat(row.rating))}
                         </td>
                     </tr>
-                );
-            }
-
-            render() {
-                return super.render();
-            }
-        }
-
-        class Tabs {
-            constructor(internalKey, isActive, title, href, component) {
-                this.internalKey = internalKey;
-                this.isActive = isActive;
-                this.title = title;
-                this.href = href;
-                this.component = component;
+                ));
             }
         }
 
@@ -478,58 +377,93 @@
             constructor(props) {
                 super(props);
 
+                const params = new URLSearchParams(window.location.search);
+                const query = params.get('query') || '';
+
                 this.state = {
+                    query: query,
                     tabs: [
-                        new Tabs('Rated/Reviewed Books', true, 'Rated and reviewed books', 'ratedAndReviewed', <RatedAndReviewedBooksComponent/>),
-                        new Tabs('Recently Viewed', false, 'Recently viewed books', 'recentlyViewed', <RecentlyViewedBooksComponent/>),
-                        new Tabs('Favourites', false, 'Favourite books', 'favouriteRead', <FavouriteReadBooksComponent/>),
-                        new Tabs('Reading Now', false, 'Reading now books', 'readingNow', <ReadingNowBooksComponent/>),
-                        new Tabs('To Read', false, 'To read books', 'toRead', <ToReadBooksComponent/>),
-                        new Tabs('Have Read', false, 'Have read books', 'haveRead', <HaveReadBooksComponent/>),
-                        new Tabs('Books for Me', false, 'Recommendation for me', 'recommendedBooks', <RecommendedBooksComponent/>),
-                        new Tabs('Favourite Genre Books', false, 'Favourite genre books', 'favouriteGenreBooks', <FavouriteGenreBooksComponent/>),
+                        new Tabs('Rated/Reviewed Books', 'Rated and reviewed books', 'ratedAndReviewed', ['Book', 'Categories', 'Your rating', 'Your comment'],
+                            <RatedAndReviewedBooksTable/>),
+                        new Tabs('Recently Viewed', 'Recently viewed books', 'recentlyViewed', ['Book', 'Categories', 'Average rating'],
+                            <RecentlyViewedBooksTable/>),
+                        new Tabs('Favourites', 'Favourite books', 'favouriteRead', ['Book', 'Categories', 'Average rating', 'Action'],
+                            <FavouriteReadBooksTable/>),
+                        new Tabs('Reading Now', 'Reading now books', 'readingNow', ['Book', 'Categories', 'Average rating', 'Action'],
+                            <ReadingNowBooksTable/>),
+                        new Tabs('To Read', 'To read books', 'toRead', ['Book', 'Categories', 'Average rating', 'Action'],
+                            <ToReadBooksTable/>),
+                        new Tabs('Have Read', 'Have read books', 'haveRead', ['Book', 'Categories', 'Average rating', 'Action'],
+                            <HaveReadBooksTable/>),
+                        new Tabs('Books for Me', 'Recommendation for me', 'recommendedBooks', ['Book', 'Categories', 'Average rating'],
+                            <RecommendedBooksTable/>),
+                        new Tabs('Favourite Genre Books', 'Favourite genre books', 'favouriteGenreBooks', ['Book', 'Categories', 'Average rating'],
+                            <FavouriteGenreBooksTable/>),
                     ]
                 }
             }
 
-            updateTabViewShow = (href) => {
-                let tempTabs = this.state.tabs;
-                for (const tab of tempTabs) {
-                    tab.isActive = tab.href === href;
-                }
-                this.setState({
-                    tabs: tempTabs
-                });
-            }
-
             render() {
-                const spanWidth = {width: '100%'};
+                const params = new URLSearchParams(window.location.search);
+                const tab = this.state.tabs.find(item => item.url === params.get('tab')) || null;
+
                 return (
                     <div className='container'>
                         <br></br>
-
                         <div className='row justify-content-md-center'>
                             <div className='btn-group' role='group' aria-label='Shelf'>
                                 {this.state.tabs.map((item, i) =>
                                     <span key={i}>
-                                        <button type='button' onClick={() => this.updateTabViewShow(item.href)}
-                                                className={item.isActive ? 'btn btn-primary' : 'btn btn-light'}>{item.internalKey}</button>
+                                        <button type='button'
+                                                onClick={(e) => {
+                                                    const url = new URL(window.location.href);
+                                                    url.searchParams.set('tab', item.url);
+                                                    url.searchParams.set('page', 1);
+                                                    url.searchParams.delete('query');
+                                                    window.location.href = url.toString();
+                                                }}
+                                                className={item.isActive() ? 'btn btn-primary' : 'btn btn-light'}>
+                                            {item.name}
+                                        </button>
                                         &nbsp;
-                                    </span>
-                                )}
+                                    </span>)
+                                }
                             </div>
                         </div>
 
                         <br></br>
+                        <div className="row">
+                            <input className='form-control' type='text' value={this.state.query}
+                                   onChange={(e) => this.setState({query: e.target.value})}
+                                   onKeyDown={(e) => {
+                                       if (e.key === 'Enter') {
+                                           const url = new URL(window.location.href);
+                                           if (this.state.query) {
+                                               url.searchParams.set('query', this.state.query);
+                                           } else {
+                                               url.searchParams.delete('query');
+                                           }
+                                           url.searchParams.set('page', 1);
+                                           window.location.href = url.toString();
+                                       }
+                                   }}
+                                   placeholder='Search for something in the table...'></input>
+                        </div>
 
-                        <div className='row'>
-                            {this.state.tabs.map((item, i) => <span key={i}
-                                style={spanWidth}> {item.isActive ? item.component : null} </span>)}
+                        <br></br>
+                        <div className="row">
+                            <h5>{tab.description}</h5>
+                        </div>
+                        <br></br>
+
+                        <div className="row">
+                            {tab ? React.cloneElement(tab.component, {tab: tab}) : null}
                         </div>
                     </div>
                 );
             }
         }
+
 
         ReactDOM.render(<BaseComponent/>, document.getElementById('div-id-user-shelf-container'));
 
