@@ -13,7 +13,7 @@ def log(request, action, data=None):
 
     logs.append(
         UserActivityLog(
-            user=request.user if request.user.is_authenticated else None,
+            user=request.user if getattr(request, 'user', None) is not None and request.user.is_authenticated else None,
             action=action,
             ipAddress=request.META.get('REMOTE_ADDR'),
             userAgent=request.META.get('HTTP_USER_AGENT'),

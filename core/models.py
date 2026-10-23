@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import SET_NULL
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -10,18 +10,18 @@ from django.utils.translation import gettext_lazy as _
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile', unique=True, db_index=True)
-    favouriteGenres = ArrayField(models.CharField(max_length=8192), blank=True)
+    favouriteGenres = models.JSONField(default=list, blank=True)
     profilePicture = models.ImageField(upload_to='profile-picture', blank=True, null=True)
 
 
 class Book(models.Model):
     title = models.CharField(max_length=1024)
-    authors = ArrayField(models.CharField(max_length=1024), blank=True)
+    authors = models.JSONField(default=list, blank=True)
     publisher = models.CharField(max_length=1024, blank=True, null=True)
     publishedDate = models.DateField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     isbn13 = models.CharField(max_length=13, unique=True)
-    categories = ArrayField(models.CharField(max_length=2048), blank=True)
+    categories = models.JSONField(default=list, blank=True)
     thumbnail = models.URLField(max_length=8192)
     selfLink = models.URLField(max_length=1024)
     favouriteRead = models.ManyToManyField(User, related_name='favouriteRead')
@@ -41,15 +41,21 @@ class Book(models.Model):
         return reverse('core:book-detail-view', kwargs={'isbn13': self.isbn13})
 
     def increaseAverageRatingAndRatingsCount(self, newRating):
-        totalRatings = self.averageRating * self.ratingsCount + newRating
-        self.ratingsCount += 1
-        self.averageRating = totalRatings / self.ratingsCount
+        ratingsCount = int(self.ratingsCount or 0)
+        averageRating = Decimal(self.averageRating or 0)
+        totalRatings = averageRating * ratingsCount + Decimal(newRating)
+        ratingsCount += 1
+        self.ratingsCount = ratingsCount
+        self.averageRating = totalRatings / Decimal(ratingsCount)
         self.save(update_fields=['ratingsCount', 'averageRating'])
 
     def decreaseAverageRatingAndRatingsCount(self, givenRating):
-        totalRatings = self.averageRating * self.ratingsCount - givenRating
-        self.ratingsCount -= 1
-        self.averageRating = Decimal(totalRatings) / Decimal(self.ratingsCount) if self.ratingsCount > 0 else Decimal(0)
+        ratingsCount = int(self.ratingsCount or 0)
+        averageRating = Decimal(self.averageRating or 0)
+        totalRatings = averageRating * ratingsCount - Decimal(givenRating)
+        ratingsCount -= 1
+        self.ratingsCount = ratingsCount
+        self.averageRating = Decimal(totalRatings) / Decimal(ratingsCount) if ratingsCount > 0 else Decimal(0)
         self.save(update_fields=['ratingsCount', 'averageRating'])
 
     def __str__(self):
@@ -78,8 +84,41 @@ class BookReview(models.Model):
         ]
 
     def save(self, *args, **kwargs):
+        isCreate = self._state.adding
+        previousRating = None
+        if not isCreate and self.pk:
+            previousRating = (
+                BookReview.objects.filter(pk=self.pk).values_list('rating', flat=True).first()
+            )
+
         super().save(*args, **kwargs)
-        self.book.increaseAverageRatingAndRatingsCount(self.rating)
+
+        if isCreate:
+            self.book.increaseAverageRatingAndRatingsCount(self.rating)
+            return
+
+        if previousRating is None or int(previousRating) == int(self.rating):
+            return
+
+        # Adjust average without changing ratingsCount (review count unchanged)
+        book = self.book
+        ratingsCount = int(book.ratingsCount or 0)
+        if ratingsCount <= 0:
+            # Defensive: if data got corrupted, fall back to recalculation.
+            total = BookReview.objects.filter(book=book).aggregate(
+                avg=models.Avg('rating'),
+                cnt=models.Count('id'),
+            )
+            book.ratingsCount = int(total['cnt'] or 0)
+            book.averageRating = Decimal(str(total['avg'] or 0))
+            book.save(update_fields=['ratingsCount', 'averageRating'])
+            return
+
+        averageRating = Decimal(book.averageRating or 0)
+        totalRatings = averageRating * Decimal(ratingsCount)
+        totalRatings = totalRatings - Decimal(previousRating) + Decimal(self.rating)
+        book.averageRating = totalRatings / Decimal(ratingsCount)
+        book.save(update_fields=['averageRating'])
 
     def delete(self, *args, **kwargs):
         self.book.decreaseAverageRatingAndRatingsCount(self.rating)
@@ -122,7 +161,7 @@ class UserActivityLog(models.Model):
         ADD_DISLIKE_TO_COMMENT = 'ADD_DISLIKE_TO_COMMENT', _('Add Dislike to Comment')
         REMOVE_DISLIKE_FROM_COMMENT = 'REMOVE_DISLIKE_FROM_COMMENT', _('Remove Dislike from Comment')
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=64, blank=True, null=True, choices=Action.choices)
     ipAddress = models.GenericIPAddressField(blank=True, null=True)
     userAgent = models.CharField(max_length=255, blank=True, null=True)
@@ -132,4 +171,25 @@ class UserActivityLog(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['user', 'timeStamp'], name='idx-user-timestamp'),
+        ]
+
+
+class PrecomputedRecommendation(models.Model):
+    class Type(models.TextChoices):
+        BASED_ON_RATING = 'BASED_ON_RATING', _('Based on Rating')
+        OTHER_USERS_FAVOURITE = 'OTHER_USERS_FAVOURITE', _('Other Users Favourite')
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='precomputedRecommendations')
+    recommendationType = models.CharField(max_length=64, choices=Type.choices, db_index=True)
+    isbns = models.JSONField(default=list, blank=True)
+    generatedAt = models.DateTimeField(default=timezone.now)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'recommendationType'], name='uniq-user-recommendation-type')
+        ]
+        indexes = [
+            models.Index(fields=['user', 'recommendationType'], name='idx-user-rec-type'),
+            models.Index(fields=['generatedAt'], name='idx-rec-generated-at'),
         ]

@@ -5,6 +5,7 @@ from core.models import (
     BookReview,
     Category,
     Profile,
+    PrecomputedRecommendation,
     UserActivityLog
 )
 
@@ -31,4 +32,9 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(UserActivityLog)
 class UserActivityLogAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(PrecomputedRecommendation)
+class PrecomputedRecommendationAdmin(admin.ModelAdmin):
     pass

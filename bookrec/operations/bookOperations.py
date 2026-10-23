@@ -17,12 +17,14 @@ from sklearn.preprocessing import MinMaxScaler
 from core.models import (
     Book,
     BookReview,
-    Category
+    Category,
+    PrecomputedRecommendation,
 )
 from core.serializers import (
     BookSerializerV1,
     BookSerializerV2,
-    BookReviewSerializerV2
+    BookReviewSerializerV2,
+    BookThumbnailSerializer
 )
 
 
@@ -81,22 +83,6 @@ def handleAuthor(baseData, additionalData):
     return []
 
 
-class ApiBook:
-    def __init__(self, title, authors, publisher, publishedDate, description, isbn13, categories, thumbnail, selfLink,
-                 averageRating, ratingsCount):
-        self.title = title
-        self.authors = authors
-        self.publisher = publisher
-        self.publishedDate = publishedDate
-        self.description = description
-        self.isbn13 = isbn13
-        self.categories = categories
-        self.thumbnail = thumbnail
-        self.selfLink = selfLink
-        self.averageRating = averageRating
-        self.ratingsCount = ratingsCount
-
-
 def performComplexBookSearch(query):
     attributesToSearch = ['title', 'authors', 'publisher', 'description', 'isbn13', 'categories']
     filterList = [
@@ -110,8 +96,7 @@ def googleBooksAPIRequests(query):
     if response.json().get('totalItems') == 0:
         return []
 
-    newBooks = []
-    apiBooks = []
+    books = []
     combinedCategories = []
 
     for item in response.json()['items']:
@@ -135,8 +120,8 @@ def googleBooksAPIRequests(query):
         joinedCategories = list(set(baseCategories + additionalCategories))
         combinedCategories += joinedCategories
 
-        apiBooks.append(
-            ApiBook(
+        books.append(
+            Book(
                 title=item.get('volumeInfo').get('title'),
                 authors=handleAuthor(item, additionalData),
                 publisher=item.get('volumeInfo').get('publisher'),
@@ -151,41 +136,15 @@ def googleBooksAPIRequests(query):
             )
         )
 
-    isbn13FromApi = [book.isbn13 for book in apiBooks]
-    booksFromApiThatMatchDB = Book.objects.filter(isbn13__in=isbn13FromApi)
-    booksFromApiThatMatchDBIsbn13 = list(booksFromApiThatMatchDB.values_list('isbn13', flat=True))
+        Category.objects.bulk_create(
+            [
+                Category(name=category) for category in list(set(combinedCategories))
+            ],
+            ignore_conflicts=True
+        )
 
-    for apiBook in apiBooks:
-        if apiBook.isbn13 not in booksFromApiThatMatchDBIsbn13:
-            newBooks.append(
-                Book(
-                    title=apiBook.title,
-                    authors=apiBook.authors,
-                    publisher=apiBook.publisher,
-                    publishedDate=apiBook.publishedDate,
-                    description=apiBook.description,
-                    isbn13=apiBook.isbn13,
-                    categories=apiBook.categories,
-                    thumbnail=apiBook.thumbnail,
-                    selfLink=apiBook.selfLink,
-                    averageRating=apiBook.averageRating,
-                    ratingsCount=apiBook.ratingsCount
-                )
-            )
-
-    combinedCategoriesFromApi = list(set(combinedCategories))
-    categoriesFromApiThatMatchDB = list(
-        Category.objects.filter(name__in=combinedCategoriesFromApi).values_list('name', flat=True)
-    )
-    Category.objects.bulk_create(
-        [
-            Category(name=category) for category in combinedCategoriesFromApi
-            if category.casefold() not in (name.casefold() for name in categoriesFromApiThatMatchDB)
-        ]
-    )
-    newBooksIsbn = [book.isbn13 for book in Book.objects.bulk_create(newBooks)]
-    newBooksQueryset = Book.objects.filter(isbn13__in=newBooksIsbn)
-    return booksFromApiThatMatchDB.union(newBooksQueryset, performComplexBookSearch(query))
+        Book.objects.bulk_create(books, ignore_conflicts=True)
+        return performComplexBookSearch(query)
 
 
 def recentlyAddedBooks():
@@ -194,14 +153,7 @@ def recentlyAddedBooks():
         return queryset
 
     books = Book.objects.order_by('-id').only('title', 'thumbnail', 'isbn13')[:20]
-    queryset = [
-        {
-            'title': book.title,
-            'thumbnail': book.thumbnail,
-            'url': book.getUrl()
-        }
-        for book in books
-    ]
+    queryset = BookThumbnailSerializer(books, many=True).data
     cache.set('recently-added-books', queryset, timeout=30)
     return queryset
 
@@ -237,14 +189,7 @@ def booksBasedOnRatings():
     finalResult = list(booksScoredFromDf[['isbn13']].head(20)['isbn13'])
 
     books = Book.objects.filter(isbn13__in=finalResult)
-    queryset = [
-        {
-            'title': book.title,
-            'thumbnail': book.thumbnail,
-            'url': book.getUrl()
-        }
-        for book in books
-    ]
+    queryset = BookThumbnailSerializer(books, many=True).data
     cache.set('books-based-on-ratings', queryset, timeout=30)
     return queryset
 
@@ -294,14 +239,7 @@ def booksBasedOnViewings(request):
     topBooks = allBooksDf.iloc[topIndices]
 
     books = Book.objects.filter(isbn13__in=topBooks['isbn13']).distinct()
-    queryset = [
-        {
-            'title': book.title,
-            'thumbnail': book.thumbnail,
-            'url': book.getUrl()
-        }
-        for book in books
-    ]
+    queryset = BookThumbnailSerializer(books, many=True).data
     cache.set(f'books-based-on-ratings-{request.user.id}', queryset, timeout=30)
     return queryset
 
@@ -359,48 +297,59 @@ def otherUsersFavouriteBooks(request):
     if queryset:
         return queryset
 
+    recommendedBooks = computeOtherUsersFavouriteBooks(request.user, limit=20)
+    queryset = BookThumbnailSerializer(recommendedBooks, many=True).data
+    cache.set(f'other-users-favourite-books-{request.user.id}', queryset, timeout=30)
+    return queryset
+
+
+def computeOtherUsersFavouriteBooks(user, limit=20):
     # Step 1: Get all user-book favourite relationships
-    books = Book.objects.prefetch_related('favouriteRead')
+    books = list(Book.objects.prefetch_related('favouriteRead'))
     users = list(User.objects.values_list('id', flat=True))
+    if not users or not books:
+        return []
+
     userIndex = {uid: i for i, uid in enumerate(users)}
+    if user.id not in userIndex:
+        return []
+
     bookIds = [book.id for book in books]
     bookIndex = {bid: i for i, bid in enumerate(bookIds)}
 
     # Step 2: Build sparse user-book matrix
     row, col = [], []
     for book in books:
-        for user in book.favouriteRead.all():
-            row.append(userIndex[user.id])
+        for u in book.favouriteRead.all():
+            row.append(userIndex[u.id])
             col.append(bookIndex[book.id])
+    if not row:
+        return []
+
     data = numpy.ones(len(row))
     userBookMatrix = csr_matrix((data, (row, col)), shape=(len(users), len(bookIds)))
 
     # Step 3: Compute similarity with current user
-    userVec = userBookMatrix[userIndex[request.user.id]]
+    userVec = userBookMatrix[userIndex[user.id]]
     similarities = cosine_similarity(userVec, userBookMatrix).flatten()
 
     # Step 4: Score all books by similarity of users who favourited them
     scores = userBookMatrix.T.dot(similarities)
 
     # Step 5: Remove books the user already has
-    userBooksMask = userBookMatrix[userIndex[request.user.id]].toarray().flatten()
+    userBooksMask = userBookMatrix[userIndex[user.id]].toarray().flatten()
     scores[userBooksMask > 0] = 0
 
-    # Step 6: Get top 20 books
-    topIndices = numpy.argpartition(-scores, 20)[:20]
+    # Step 6: Get top N books
+    limit = min(int(limit), len(bookIds))
+    topIndices = numpy.argpartition(-scores, limit)[:limit]
     topIndices = topIndices[numpy.argsort(-scores[topIndices])]
+    return [books[int(i)] for i in topIndices]
 
-    recommendedBooks = [books[int(i)] for i in topIndices]
-    queryset = [
-        {
-            'title': book.title,
-            'thumbnail': book.thumbnail,
-            'url': book.getUrl()
-        }
-        for book in recommendedBooks
-    ]
-    cache.set(f'other-users-favourite-books-{request.user.id}', queryset, timeout=30)
-    return queryset
+
+def getPrecomputedRecommendationIsbns(user, recommendationType):
+    obj = PrecomputedRecommendation.objects.filter(user=user, recommendationType=recommendationType).first()
+    return (obj.isbns or []) if obj else []
 
 
 def similarBooks(book):
@@ -448,21 +397,30 @@ def similarBooks(book):
     similarBooksIndices = similarities.argsort()[-12 - 1:-1][::-1]
     recommendedBooks = [allBooks[int(i)] for i in similarBooksIndices]
 
-    queryset = [
-        {
-            'title': book.title,
-            'thumbnail': book.thumbnail,
-            'url': book.getUrl()
-        }
-        for book in recommendedBooks
-    ]
+    queryset = BookThumbnailSerializer(recommendedBooks, many=True).data
     cache.set(f'content-based-recommendations-{book.id}', queryset, timeout=30)
     return queryset
 
 
 def booksBasedOnFavouriteGenres(request):
-    query = Q()
-    for genre in request.user.profile.favouriteGenres:
-        query |= Q(categories__contains=[genre])
-    query &= Q(averageRating__gte=3)
-    return Book.objects.filter(query)
+    """
+    SQLite-friendly implementation.
+
+    With Postgres ArrayField, this could be done using `categories__contains=[genre]`.
+    With JSONField on SQLite, we avoid DB-level "array contains" queries and filter in Python.
+    """
+    favouriteGenres = getattr(request.user.profile, 'favouriteGenres', []) or []
+    if not favouriteGenres:
+        return Book.objects.none()
+
+    candidates = Book.objects.filter(averageRating__gte=3).only('id', 'isbn13', 'title', 'categories')
+
+    matchingIds = []
+    favouriteGenresSet = {g.casefold() for g in favouriteGenres if isinstance(g, str)}
+    for book in candidates:
+        categories = book.categories or []
+        categoriesSet = {c.casefold() for c in categories if isinstance(c, str)}
+        if categoriesSet & favouriteGenresSet:
+            matchingIds.append(book.id)
+
+    return Book.objects.filter(id__in=matchingIds)

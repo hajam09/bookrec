@@ -32,8 +32,10 @@ from core.models import (
     Book,
     BookReview,
     Category,
+    PrecomputedRecommendation,
     UserActivityLog
 )
+from core.serializers import BookThumbnailSerializer
 
 
 def loginView(request):
@@ -216,12 +218,24 @@ class SettingsView(LoginRequiredMixin, View):
 
 
 def indexView(request):
+    otherUsersFavouriteBooks = []
+    if request.user.is_authenticated:
+        isbns = bookOperations.getPrecomputedRecommendationIsbns(
+            request.user,
+            PrecomputedRecommendation.Type.OTHER_USERS_FAVOURITE,
+        )
+        if isbns:
+            otherUsersFavouriteBooks = BookThumbnailSerializer(Book.objects.filter(isbn13__in=isbns), many=True).data
+        else:
+            # Fallback (compute on demand) until precompute job runs
+            otherUsersFavouriteBooks = bookOperations.otherUsersFavouriteBooks(request)
+
     context = {
         'categories': Category.objects.all(),
         'recentlyAddedBooks': bookOperations.recentlyAddedBooks(),
         'booksBasedOnRatings': bookOperations.booksBasedOnRatings(),
         'booksBasedOnViewings': bookOperations.booksBasedOnViewings(request),
-        'otherUsersFavouriteBooks': bookOperations.otherUsersFavouriteBooks(request),
+        'otherUsersFavouriteBooks': otherUsersFavouriteBooks,
     }
     return render(request, 'core/index.html', context)
 
@@ -283,7 +297,15 @@ def userShelfView(request):
     elif tab in ['recentlyViewed']:
         records = Book.objects.filter(isbn13__in=request.session.get('history', []))
     elif tab in ['recommendedBooks']:
-        records = bookOperations.booksBasedOnRating(request)
+        isbns = bookOperations.getPrecomputedRecommendationIsbns(
+            request.user,
+            PrecomputedRecommendation.Type.BASED_ON_RATING,
+        )
+        if isbns:
+            records = Book.objects.filter(isbn13__in=isbns)
+        else:
+            # Fallback until precompute job runs
+            records = bookOperations.booksBasedOnRating(request)
     elif tab in ['favouriteGenreBooks']:
         records = bookOperations.booksBasedOnFavouriteGenres(request)
     elif tab in ['ratedAndReviewed']:

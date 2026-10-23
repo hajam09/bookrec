@@ -309,10 +309,12 @@ class BasicUserActivityLogSerializer(UserActivityLogSerializer):
         ]
 
 
-class UserActivityFilterSerializer(serializers.Serializer):
-    sort_by = serializers.ChoiceField(
-        choices=['new', 'old'],
-        required=False,
-        default='new'
-    )
-    page = serializers.IntegerField(min_value=1, required=False, default=1)
+class BookThumbnailSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Book
+        fields = ['title', 'thumbnail', 'url']
+
+    def get_url(self, obj):
+        return obj.getUrl()

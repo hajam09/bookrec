@@ -30,14 +30,13 @@ from core.serializers import (
     UserAndProfileSerializer,
     UserActivityLogSerializer,
     BasicUserActivityLogSerializer,
-    UserActivityFilterSerializer,
 )
 
 
 class RequestAccountDeleteCodeApiVersion1(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, *args, **kwargs):
         emailOperations.sendEmailForAccountDeletionCode(self.request.user)
         logOperations.log(self.request, UserActivityLog.Action.REQUEST_ACCOUNT_DELETE_CODE)
         response = {
@@ -49,7 +48,7 @@ class RequestAccountDeleteCodeApiVersion1(APIView):
         }
         return Response(response, status=HTTPStatus.OK)
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, *args, **kwargs):
         prtg = PasswordResetTokenGenerator()
         if not prtg.check_token(self.request.user, self.request.data.get('code')):
             response = {
@@ -82,27 +81,27 @@ class BookReviewActionApiVersion1(APIView):
 
     permission_classes = [CustomIsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, *args, **kwargs):
         book = Book.objects.filter(isbn13=kwargs.get('isbn13')).first()
         bookReview, created = BookReview.objects.get_or_create(
             book=book,
             creator=self.request.user,
             defaults={
-                'comment': request.data.get('comment'),
-                'rating': int(request.data.get('rating')),
+                'comment': self.request.data.get('comment'),
+                'rating': int(self.request.data.get('rating')),
             }
         )
 
         data = {'book-isbn13': kwargs.get('isbn13'), 'book-title': book.title}
 
         if not created:
-            bookReview.comment = request.data.get('comment')
-            bookReview.rating = int(request.data.get('rating'))
+            bookReview.comment = self.request.data.get('comment')
+            bookReview.rating = int(self.request.data.get('rating'))
             bookReview.edited = True
             bookReview.save(update_fields=['comment', 'rating', 'edited'])
-            logOperations.log(request, UserActivityLog.Action.EDIT_COMMENT, data)
+            logOperations.log(self.request, UserActivityLog.Action.EDIT_COMMENT, data)
         else:
-            logOperations.log(request, UserActivityLog.Action.ADD_COMMENT, data)
+            logOperations.log(self.request, UserActivityLog.Action.ADD_COMMENT, data)
 
         bookReview.likes.add(self.request.user)
         serializer = BookReviewSerializerV1(bookReview, context={'request': self.request})
@@ -114,11 +113,11 @@ class BookReviewActionApiVersion1(APIView):
         }
         return Response(response, status=HTTPStatus.OK)
 
-    def get(self, request, *args, **kwargs):
+    def get(self, *args, **kwargs):
         bookReviews = BookReview.objects.select_related('creator').prefetch_related('likes', 'dislikes').filter(
             book__isbn13=kwargs.get('isbn13')
         )
-        sortBy = request.GET.get('sort-by')
+        sortBy = self.request.GET.get('sort-by')
 
         if sortBy == 'top':
             bookReviews = bookReviews.annotate(
@@ -144,7 +143,7 @@ class BookReviewActionApiVersion1(APIView):
             raise Exception(f'Unknown sort by filter {sortBy}')
 
         paginator = Paginator(bookReviews, 10)
-        page = request.GET.get('page')
+        page = self.request.GET.get('page')
 
         try:
             bookReviews = paginator.page(page)
@@ -164,17 +163,17 @@ class BookReviewActionApiVersion1(APIView):
         }
         return Response(response, status=HTTPStatus.OK)
 
-    def put(self, request, *args, **kwargs):
+    def put(self, *args, **kwargs):
         bookReview = BookReview.objects.get(
-            id=request.data.get('id'),
+            id=self.request.data.get('id'),
             book__isbn13=kwargs.get('isbn13'),
             creator=self.request.user
         )
-        bookReview.comment = request.data.get('comment')
+        bookReview.comment = self.request.data.get('comment')
         bookReview.edited = True
         bookReview.save(update_fields=['comment', 'edited'])
         logOperations.log(
-            request,
+            self.request,
             UserActivityLog.Action.EDIT_COMMENT,
             {'book-isbn13': kwargs.get('isbn13'), 'book-title': bookReview.book.title}
         )
@@ -188,16 +187,16 @@ class BookReviewActionApiVersion1(APIView):
         }
         return Response(response, status=HTTPStatus.OK)
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, *args, **kwargs):
         bookReview = get_object_or_404(
             BookReview.objects.select_related('book'),
-            id=request.data.get('id'),
+            id=self.request.data.get('id'),
             book__isbn13=kwargs.get('isbn13'),
             creator=self.request.user
         )
 
         logOperations.log(
-            request,
+            self.request,
             UserActivityLog.Action.DELETE_COMMENT,
             {'book-isbn13': kwargs.get('isbn13'), 'book-title': bookReview.book.title}
         )
@@ -230,7 +229,7 @@ class UserReadingInfoApiVersion1(APIView):
         }
     }
 
-    def get(self, request, *args, **kwargs):
+    def get(self, *args, **kwargs):
         book = Book.objects.filter(isbn13=kwargs.get('isbn13')).annotate(
             isInFavouriteRead=Exists(Book.objects.filter(favouriteRead=self.request.user, pk=OuterRef('pk'))),
             isInReadingNow=Exists(Book.objects.filter(readingNow=self.request.user, pk=OuterRef('pk'))),
@@ -248,15 +247,15 @@ class UserReadingInfoApiVersion1(APIView):
         }
         return Response(response)
 
-    def put(self, request, *args, **kwargs):
+    def put(self, *args, **kwargs):
         book = Book.objects.filter(isbn13=kwargs.get('isbn13')).first()
         if book is not None:
-            field = request.data.get('field')
-            action = request.data.get('action')
+            field = self.request.data.get('field')
+            action = self.request.data.get('action')
             try:
                 getattr(getattr(book, field), action)(self.request.user)
                 logOperations.log(
-                    request,
+                    self.request,
                     self.LOG_ACTIONS[field][action],
                     {'book-isbn13': kwargs.get('isbn13'), 'book-title': book.title}
                 )
@@ -272,29 +271,29 @@ class UserReadingInfoApiVersion1(APIView):
 class BookReviewVotingApiVersion1(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, *args, **kwargs):
+    def put(self, *args, **kwargs):
         bookReview = BookReview.objects.select_related('creator').prefetch_related('likes', 'dislikes').get(
-            id=request.data.get('id')
+            id=self.request.data.get('id')
         )
         data = {'book-title': bookReview.book.title, 'book-isbn13': bookReview.book.isbn13}
 
-        if request.data.get('direction') == 'UP':
+        if self.request.data.get('direction') == 'UP':
             if self.request.user not in bookReview.likes.all():
                 bookReview.likes.add(self.request.user)
-                logOperations.log(request, UserActivityLog.Action.ADD_LIKE_TO_COMMENT, data)
+                logOperations.log(self.request, UserActivityLog.Action.ADD_LIKE_TO_COMMENT, data)
             else:
                 bookReview.likes.remove(self.request.user)
-                logOperations.log(request, UserActivityLog.Action.REMOVE_LIKE_FROM_COMMENT, data)
+                logOperations.log(self.request, UserActivityLog.Action.REMOVE_LIKE_FROM_COMMENT, data)
 
             if self.request.user in bookReview.dislikes.all():
                 bookReview.dislikes.remove(self.request.user)
-        elif request.data.get('direction') == 'DOWN':
+        elif self.request.data.get('direction') == 'DOWN':
             if self.request.user not in bookReview.dislikes.all():
                 bookReview.dislikes.add(self.request.user)
-                logOperations.log(request, UserActivityLog.Action.ADD_DISLIKE_TO_COMMENT, data)
+                logOperations.log(self.request, UserActivityLog.Action.ADD_DISLIKE_TO_COMMENT, data)
             else:
                 bookReview.dislikes.remove(self.request.user)
-                logOperations.log(request, UserActivityLog.Action.REMOVE_DISLIKE_FROM_COMMENT, data)
+                logOperations.log(self.request, UserActivityLog.Action.REMOVE_DISLIKE_FROM_COMMENT, data)
 
             if self.request.user in bookReview.likes.all():
                 bookReview.likes.remove(self.request.user)
@@ -315,26 +314,16 @@ class BookReviewVotingApiVersion1(APIView):
 class UserActivityApiVersion1(APIView):
     permission_classes = [IsAuthenticated]
 
-    class UserActivityPagination(PageNumberPagination):
-        page_size = 20
+    def get(self, *args, **kwargs):
+        sortBy = self.request.GET.get('sort-by', 'new')
+        activities = UserActivityLog.objects.filter(user=self.request.user).order_by(
+            '-timeStamp' if sortBy == 'new' else 'timeStamp'
+        )
 
-    def get(self, request, *args, **kwargs):
-        data = request.GET.copy()
-        if 'sort-by' in data:
-            data['sort_by'] = data.get('sort-by')
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
 
-        serializer = UserActivityFilterSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        sortBy = serializer.validated_data['sort_by']
-
-        activities = UserActivityLog.objects.filter(user=request.user)
-        if sortBy == 'new':
-            activities = activities.order_by('-timeStamp')
-        else:
-            activities = activities.order_by('timeStamp')
-
-        paginator = self.UserActivityPagination()
-        page = paginator.paginate_queryset(activities, request)
+        page = paginator.paginate_queryset(activities, self.request)
         serializer = UserActivityLogSerializer(page, many=True)
         return paginator.get_paginated_response({
             'success': True,
